@@ -12,8 +12,8 @@
 #if MPICH_THREAD_LEVEL == MPI_THREAD_MULTIPLE
 static MPIR_Comm *progress_comm_ptr;
 static MPID_Thread_id_t progress_thread_id;
-static MPID_Thread_mutex_t progress_mutex;
-static MPID_Thread_cond_t progress_cond;
+static pthread_mutex_t progress_mutex;
+static pthread_cond_t progress_cond;
 static volatile int progress_thread_done = 0;
 
 /* We can use whatever tag we want; we use a different communicator
@@ -53,15 +53,15 @@ static void progress_fn(void * data)
     MPIR_Assert(!mpi_errno);
 
     /* Send a signal to the main thread saying we are done */
-    MPID_Thread_mutex_lock(&progress_mutex, &mpi_errno);
+    mpi_errno = pthread_mutex_lock(&progress_mutex);
     MPIR_Assert(!mpi_errno);
 
     progress_thread_done = 1;
 
-    MPID_Thread_mutex_unlock(&progress_mutex, &mpi_errno);
+    mpi_errno = pthread_mutex_unlock(&progress_mutex);
     MPIR_Assert(!mpi_errno);
 
-    MPID_Thread_cond_signal(&progress_cond, &mpi_errno);
+    mpi_errno = pthread_cond_signal(&progress_cond);
     MPIR_Assert(!mpi_errno);
 
     MPID_THREAD_CS_EXIT(EP_GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
@@ -91,10 +91,10 @@ int MPIR_Init_async_thread(void)
     mpi_errno = MPIR_Comm_dup_impl(comm_self_ptr, &progress_comm_ptr);
     if (mpi_errno) MPIR_ERR_POP(mpi_errno);
 
-    MPID_Thread_cond_create(&progress_cond, &err);
+    err =pthread_cond_init(&progress_cond, NULL);
     MPIR_ERR_CHKANDJUMP1(err, mpi_errno, MPI_ERR_OTHER, "**cond_create", "**cond_create %s", strerror(err));
     
-    MPID_Thread_mutex_create(&progress_mutex, &err);
+    err = pthread_mutex_init(&progress_mutex, NULL);
     MPIR_ERR_CHKANDJUMP1(err, mpi_errno, MPI_ERR_OTHER, "**mutex_create", "**mutex_create %s", strerror(err));
     
     MPID_Thread_create((MPID_Thread_func_t) progress_fn, NULL, &progress_thread_id, &err);
@@ -136,15 +136,15 @@ int MPIR_Finalize_async_thread(void)
     /* XXX DJG why is this unlock/lock necessary?  Should we just YIELD here or later?  */
     MPID_THREAD_CS_EXIT(GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
 
-    MPID_Thread_mutex_lock(&progress_mutex, &mpi_errno);
+    mpi_errno = pthread_mutex_lock(&progress_mutex);
     MPIR_Assert(!mpi_errno);
 
     while (!progress_thread_done) {
-        MPID_Thread_cond_wait(&progress_cond, &progress_mutex, &mpi_errno);
+        mpi_errno = pthread_cond_wait(&progress_cond, &progress_mutex);
         MPIR_Assert(!mpi_errno);
     }
 
-    MPID_Thread_mutex_unlock(&progress_mutex, &mpi_errno);
+    mpi_errno = pthread_mutex_unlock(&progress_mutex);
     MPIR_Assert(!mpi_errno);
 
     mpi_errno = MPIR_Comm_free_impl(progress_comm_ptr);
@@ -152,10 +152,10 @@ int MPIR_Finalize_async_thread(void)
 
     MPID_THREAD_CS_ENTER(GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
 
-    MPID_Thread_cond_destroy(&progress_cond, &mpi_errno);
+    mpi_errno = pthread_cond_destroy(&progress_cond);
     MPIR_Assert(!mpi_errno);
 
-    MPID_Thread_mutex_destroy(&progress_mutex, &mpi_errno);
+    mpi_errno = pthread_mutex_destroy(&progress_mutex);
     MPIR_Assert(!mpi_errno);
 
     MPIR_FUNC_TERSE_EXIT(MPID_STATE_MPIR_FINALIZE_ASYNC_THREAD);
