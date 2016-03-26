@@ -16,6 +16,49 @@ static pthread_mutex_t progress_mutex;
 static pthread_cond_t progress_cond;
 static volatile int progress_thread_done = 0;
 
+static int verbose = 0;
+
+static int core_count(void){
+    return (int) sysconf(_SC_NPROCESSORS_ONLN);
+}
+
+static void print_cpuset(const char* prefix) {
+    int i, err;
+    char s[100] = "";
+    cpu_set_t my_cpuset;
+    err = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    assert(err==0);
+    for(i=0; i<core_count(); i++) sprintf(s, "%s%d", s, CPU_ISSET(i, &my_cpuset));
+    printf("%s %s\n", prefix, s); fflush(stdout);
+}
+
+static void set_odd_cpuset(){
+    int i, err;
+
+    cpu_set_t my_cpuset;
+    err = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    if(verbose) print_cpuset("Initial async thread cpu set: ");
+
+    for(i=0; i<core_count(); i+=2) CPU_CLR(i, &my_cpuset);
+
+    err = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    assert(err==0);
+    if(verbose) print_cpuset("New async thread cpu set:");
+}
+static void set_even_cpuset(){
+    int i, err;
+
+    cpu_set_t my_cpuset;
+    err = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    if(verbose) print_cpuset("Initial main thread cpu set: ");
+
+    for(i=1; i<core_count(); i+=2) CPU_CLR(i, &my_cpuset);
+
+    err = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    assert(err==0);
+    if(verbose) print_cpuset("New main thread cpu set:");
+}
+
 /* We can use whatever tag we want; we use a different communicator
  * for communicating with the progress thread. */
 #define WAKE_TAG 100
@@ -30,6 +73,8 @@ static void progress_fn(void * data)
     MPIR_Request *request_ptr = NULL;
     MPI_Request request;
     MPI_Status status;
+
+    set_odd_cpuset();
 
     /* Explicitly add CS_ENTER/EXIT since this thread is created from
      * within an internal function and will call NMPI functions
@@ -99,6 +144,8 @@ int MPIR_Init_async_thread(void)
     
     MPID_Thread_create((MPID_Thread_func_t) progress_fn, NULL, &progress_thread_id, &err);
     MPIR_ERR_CHKANDJUMP1(err, mpi_errno, MPI_ERR_OTHER, "**mutex_create", "**mutex_create %s", strerror(err));
+
+    set_even_cpuset();
     
     MPIR_FUNC_TERSE_EXIT(MPID_STATE_MPIR_INIT_ASYNC_THREAD);
 
