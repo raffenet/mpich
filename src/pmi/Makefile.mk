@@ -6,7 +6,6 @@
 ##
 
 include $(top_srcdir)/src/pmi/pmi2/Makefile.mk
-include $(top_srcdir)/src/pmi/simple/Makefile.mk
 
 errnames_txt_files += src/pmi/errnames.txt
 

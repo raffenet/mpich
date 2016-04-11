@@ -17,8 +17,6 @@
  */
 /***************************************************************************/
 
-#include "mpichconf.h"
-
 #define PMI_VERSION    1
 #define PMI_SUBVERSION 1
 
@@ -45,17 +43,18 @@
 #include <sys/socket.h>
 #endif
 
+#ifndef MPI_MAX_PORT_NAME
+#define MPI_MAX_PORT_NAME 256
+#endif
+
 #include "mpl.h"            /* Get ATTRIBUTE, some base functions */
-/* mpimem includes the definitions for MPL_malloc and MPL_free */
-#include "mpimem.h"
+#include "pmi.h"
 
 /* Temporary debug definitions */
 /* #define DBG_PRINTF(args) printf args ; fflush(stdout) */
 #define DBG_PRINTF(args)
 
-#include "pmi.h"
 #include "simple_pmiutil.h"
-#include "mpi.h"		/* to get MPI_MAX_PORT_NAME */
 
 /* 
    These are global variable used *ONLY* in this file, and are hence

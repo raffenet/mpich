@@ -12,8 +12,6 @@
    key=value messages
 */
 
-#include "mpichconf.h"
-
 #include <stdio.h>
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -28,12 +26,9 @@
 #include <errno.h>
 
 #include "mpl.h"
-
 #include "pmi.h"
-#include "simple_pmiutil.h"
 
-/* Use the memory definitions from mpich/src/include */
-#include "mpimem.h"
+#include "simple_pmiutil.h"
 
 #define MAXVALLEN 1024
 #define MAXKEYLEN   32

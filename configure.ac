@@ -1714,6 +1714,20 @@ else
     AC_MSG_ERROR([A PMI implementation must be selected or the default used.])
 fi
 
+pmisrcdir=""
+AC_SUBST([pmisrcdir])
+pmilibdir=""
+AC_SUBST([pmilibdir])
+pmilib=""
+AC_SUBST([pmilib])
+if test "$with_pmi" = "simple" ; then
+    PAC_CONFIG_SUBDIR_ARGS([src/pmi/simple],[],[],[AC_MSG_ERROR(simple PMI configure failed)])
+    pmisrcdir="src/pmi/simple"
+    pmilibdir="-Lsrc/pmi/simple"
+    pmilib=src/pmi/simple/libpmi.la
+    PAC_APPEND_FLAG([-I${use_top_srcdir}/src/pmi/simple], [CPPFLAGS])
+fi
+
 # Step 3: complete pm setup.
 # Note that checks for errors have already been performed, so this
 # loop does not need to perform any extra error checks.
@@ -2700,6 +2714,7 @@ fi
 if test "$with_namepublisher" != no -a "$with_namepublisher" != "none" ; then
     case "$with_namepublisher" in 
     none|no) ;;
+    pmi) ;;
     # Removed ldap namepublisher hook - we no longer support or distribute
     # the ldap-based name server
     file*)

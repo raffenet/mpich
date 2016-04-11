@@ -1,14 +1,27 @@
-[#] start of __file__
-dnl MPICH_SUBCFG_AFTER=src/pmi
+AC_PREREQ([2.60])
+#
+# (C) 2006 by Argonne National Laboratory.
+#     See COPYRIGHT in top-level directory.
+#
 
-AC_DEFUN([PAC_SUBCFG_PREREQ_]PAC_SUBCFG_AUTO_SUFFIX,[
-])
+AC_INIT([PMI], [0.1])
 
-AC_DEFUN([PAC_SUBCFG_BODY_]PAC_SUBCFG_AUTO_SUFFIX,[
+AC_CONFIG_AUX_DIR(confdb)
+AC_CONFIG_MACRO_DIR(confdb)
+AM_INIT_AUTOMAKE([subdir-objects] [-Wall -Werror foreign 1.12.3])
 
-AM_CONDITIONAL([BUILD_PMI_SIMPLE],[test "x$pmi_name" = "xsimple"])
+dnl must come before LT_INIT, which AC_REQUIREs AC_PROG_CC
+PAC_PROG_CC
+AM_PROG_CC_C_O
+AM_PROG_AR
 
-AM_COND_IF([BUILD_PMI_SIMPLE],[
+LT_PREREQ([2.2.6])
+
+# Bug in libtool adds -O2 and -g by default
+PAC_PUSH_FLAG([CFLAGS])
+LT_INIT()
+PAC_POP_FLAG([CFLAGS])
+
 if test "$enable_pmiport" != "no" ; then
    enable_pmiport=yes
 fi
@@ -75,8 +88,7 @@ if test "$pac_cv_have_haddr_list" = "yes" ; then
     AC_DEFINE(HAVE_H_ADDR_LIST,1,[Define if struct hostent contains h_addr_list])
 fi
 PAC_C_GNU_ATTRIBUTE
-])dnl end COND_IF
 
-])dnl end BODY macro
-
-[#] end of __file__
+dnl Final output
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
