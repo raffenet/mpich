@@ -16,6 +16,9 @@ static pthread_mutex_t progress_mutex;
 static pthread_cond_t progress_cond;
 static volatile int progress_thread_done = 0;
 
+#if defined(__linux__)
+#define _GNU_SOURCE
+#include <sched.h>
 static int verbose = 0;
 
 static int core_count(void){
@@ -58,6 +61,10 @@ static void set_even_cpuset(){
     assert(err==0);
     if(verbose) print_cpuset("New main thread cpu set:");
 }
+#else
+#define set_odd_cpuset()
+#define set_even_cpuset()
+#endif
 
 /* We can use whatever tag we want; we use a different communicator
  * for communicating with the progress thread. */
