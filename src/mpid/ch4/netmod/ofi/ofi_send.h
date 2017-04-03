@@ -38,7 +38,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_send_lightweight(const void *buf,
     match_bits =
         MPIDI_OFI_init_sendtag(comm->context_id + context_offset, comm->rank, tag, 0);
     mpi_errno =
-        MPIDI_OFI_send_handler(MPIDI_OFI_EP_TX_TAG(0), buf, data_sz, NULL, comm->rank,
+        MPIDI_OFI_send_handler(MPIDI_Global.ep, buf, data_sz, NULL, comm->rank,
                                MPIDI_OFI_comm_to_phys(comm, rank, MPIDI_OFI_API_TAG), match_bits,
                                NULL, MPIDI_OFI_DO_INJECT, MPIDI_OFI_CALL_LOCK);
     if (mpi_errno)
@@ -72,7 +72,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_send_lightweight_request(const void *buf,
     match_bits =
         MPIDI_OFI_init_sendtag(comm->context_id + context_offset, comm->rank, tag, 0);
     mpi_errno =
-        MPIDI_OFI_send_handler(MPIDI_OFI_EP_TX_TAG(0), buf, data_sz, NULL, comm->rank,
+        MPIDI_OFI_send_handler(MPIDI_Global.ep, buf, data_sz, NULL, comm->rank,
                                MPIDI_OFI_comm_to_phys(comm, rank, MPIDI_OFI_API_TAG), match_bits,
                                NULL, MPIDI_OFI_DO_INJECT, MPIDI_OFI_CALL_LOCK);
     if (mpi_errno)
