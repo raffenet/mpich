@@ -90,6 +90,9 @@ MPL_STATIC_INLINE_PREFIX int MPID_Isend(const void *buf,
     mpi_errno = MPIDI_NM_mpi_isend(buf, count, datatype, rank, tag, comm, context_offset, request);
 #else
     int r;
+    if (rank == comm->rank) {
+        abort();
+    }
     if ((r = MPIDI_CH4_rank_is_local(rank, comm)))
         mpi_errno =
             MPIDI_SHM_mpi_isend(buf, count, datatype, rank, tag, comm, context_offset, request);

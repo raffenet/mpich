@@ -609,7 +609,7 @@ static inline int MPIDI_NM_mpi_put(const void *origin_addr,
     if (MPIDI_CH4_rank_is_local(target_rank, win->comm_ptr))
         abort();
 
-    if (origin_contig && target_contig && origin_bytes <= MPIDI_Global.max_buffered_write) {
+    if (origin_contig && target_contig && origin_bytes <= 40) {
         MPIDI_OFI_CALL_RETRY2(MPIDI_OFI_win_cntr_incr(win),
                               fi_inject_write(MPIDI_OFI_WIN(win).ep_nocmpl,
                                               (char *) origin_addr + origin_true_lb, target_bytes,

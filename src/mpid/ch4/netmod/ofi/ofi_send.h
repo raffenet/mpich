@@ -258,7 +258,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_send(MPIDI_OFI_SENDPARAMS, int noreq, uin
 
     MPIDI_Datatype_get_info(count, datatype, dt_contig, data_sz, dt_ptr, dt_true_lb);
 
-    if (likely(!syncflag && dt_contig && (data_sz <= MPIDI_Global.max_buffered_send)))
+    if (likely(!syncflag && dt_contig && (data_sz <= 40)))
         if (noreq)
             mpi_errno = MPIDI_OFI_send_lightweight((char *) buf + dt_true_lb, data_sz,
                                                    rank, tag, comm, context_offset);
