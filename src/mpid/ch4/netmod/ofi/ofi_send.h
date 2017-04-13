@@ -16,10 +16,10 @@
 
 #define MPIDI_OFI_SENDPARAMS const void *buf,int count,MPI_Datatype datatype, \
     int rank,int tag,MPIR_Comm *comm,                               \
-    int context_offset,MPIR_Request **request
+    int context_offset, MPIDI_av_entry_t *addr, MPIR_Request **request
 
 #define MPIDI_OFI_SENDARGS buf,count,datatype,rank,tag, \
-                 comm,context_offset,request
+             comm,context_offset,addr,request
 
 #undef FUNCNAME
 #define FUNCNAME MPIDI_OFI_send_lightweight
@@ -326,6 +326,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_persistent_send(MPIDI_OFI_SENDPARAMS)
                      preq->comm,                       \
                      MPIDI_OFI_REQUEST(preq,util_id) -           \
                      CONTEXTID,                        \
+                     MPIDI_OFI_REQUEST(preq,addr)             \
                      &preq->u.persist.real_request);          \
     break;                                      \
   }
@@ -442,7 +443,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_startall(int count, MPIR_Request * req
 #ifdef MPIDI_BUILD_CH4_SHM
             STARTALL_CASE(MPIDI_PTYPE_RECV, MPIDI_NM_mpi_irecv, preq->comm->recvcontext_id);
 #else
-            STARTALL_CASE(MPIDI_PTYPE_RECV, MPID_Irecv, preq->comm->recvcontext_id);
+        STARTALL_CASE(MPIDI_PTYPE_RECV, MPID_Irecv, preq->comm->recvcontext_id);
 #endif
 
 #ifdef MPIDI_BUILD_CH4_SHM
@@ -450,7 +451,14 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_startall(int count, MPIR_Request * req
 #else
             STARTALL_CASE(MPIDI_PTYPE_SEND, MPID_Isend, preq->comm->context_id);
 #endif
-            STARTALL_CASE(MPIDI_PTYPE_SSEND, MPID_Issend, preq->comm->context_id);
+            mpi_errno = MPID_Issend(MPIDI_OFI_REQUEST(preq,util.persist.buf),
+                                    MPIDI_OFI_REQUEST(preq,util.persist.count),
+                                    MPIDI_OFI_REQUEST(preq,datatype),
+                                    MPIDI_OFI_REQUEST(preq,util.persist.rank),
+                                    MPIDI_OFI_REQUEST(preq,util.persist.tag),
+                                    preq->comm,
+                                    MPIDI_OFI_REQUEST(preq,util_id) - preq->comm->context_id
+                                    &preq->u.persist.real_request);
 
         case MPIDI_PTYPE_BSEND:{
                 MPI_Request sreq_handle;

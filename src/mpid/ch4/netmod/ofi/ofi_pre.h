@@ -123,6 +123,7 @@ typedef struct {
     struct MPIR_Comm *util_comm;
     MPI_Datatype datatype;
     MPIDI_OFI_noncontig_t *noncontig;
+    MPIDI_av_entry_t *addr;
     /* persistent send fields */
     union {
         struct {
