@@ -38,6 +38,7 @@
 
 struct MPIR_Comm;
 struct MPIR_Request;
+struct MPIDI_av_entry_t;
 
 typedef struct {
     void *huge_send_counters;
@@ -123,7 +124,6 @@ typedef struct {
     struct MPIR_Comm *util_comm;
     MPI_Datatype datatype;
     MPIDI_OFI_noncontig_t *noncontig;
-    MPIDI_av_entry_t *addr;
     /* persistent send fields */
     union {
         struct {
@@ -132,6 +132,7 @@ typedef struct {
             int tag;
             int count;
             void *buf;
+            struct MPIDI_av_entry_t *addr;
         } persist;
         struct iovec iov;
         void *inject_buf;       /* Internal buffer for inject emulation */

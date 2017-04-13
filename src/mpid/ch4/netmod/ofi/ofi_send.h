@@ -273,7 +273,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_send(MPIDI_OFI_SENDPARAMS, int noreq, uin
                                                            request);
     else
         mpi_errno = MPIDI_OFI_send_normal(buf, count, datatype, rank, tag, comm,
-                                          context_offset, request, dt_contig,
+                                          context_offset, addr, request, dt_contig,
                                           data_sz, dt_ptr, dt_true_lb, syncflag);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_OFI_SEND);
@@ -326,7 +326,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_persistent_send(MPIDI_OFI_SENDPARAMS)
                      preq->comm,                       \
                      MPIDI_OFI_REQUEST(preq,util_id) -           \
                      CONTEXTID,                        \
-                     MPIDI_OFI_REQUEST(preq,addr)             \
+                     MPIDI_OFI_REQUEST(preq,util.persist.addr),            \
                      &preq->u.persist.real_request);          \
     break;                                      \
   }
@@ -457,7 +457,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_startall(int count, MPIR_Request * req
                                     MPIDI_OFI_REQUEST(preq,util.persist.rank),
                                     MPIDI_OFI_REQUEST(preq,util.persist.tag),
                                     preq->comm,
-                                    MPIDI_OFI_REQUEST(preq,util_id) - preq->comm->context_id
+                                    MPIDI_OFI_REQUEST(preq,util_id) - preq->comm->context_id,
                                     &preq->u.persist.real_request);
 
         case MPIDI_PTYPE_BSEND:{
