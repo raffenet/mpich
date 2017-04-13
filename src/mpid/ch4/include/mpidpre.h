@@ -23,6 +23,25 @@
 #include "shmpre.h"
 #include "mpl_uthash.h"
 
+typedef unsigned MPIDI_locality_t;
+
+typedef struct {
+    union {
+    MPIDI_NM_ADDR_DECL} netmod;
+#ifdef MPIDI_BUILD_CH4_LOCALITY_INFO
+    MPIDI_locality_t is_local;
+#endif
+} MPIDI_av_entry_t;
+
+typedef struct {
+    MPIR_OBJECT_HEADER;
+    int size;
+    MPIDI_av_entry_t table[0];
+} MPIDI_av_table_t;
+
+extern MPIDI_av_table_t **MPIDI_av_table;
+extern MPIDI_av_table_t *MPIDI_av_table0;
+
 typedef struct {
     union {
     MPIDI_NM_DT_DECL} netmod;
@@ -299,8 +318,6 @@ typedef struct {
 #define MPIDI_CH4U_WINFO(win,rank) (MPIDI_CH4U_win_info_t*) &(MPIDI_CH4U_WIN(win, info_table)[rank])
 #define MPIDI_CH4U_WIN_TARGET(win,rank,field) ((((win)->dev.ch4u).targets)[rank].field)
 
-typedef unsigned MPIDI_locality_t;
-
 typedef struct MPIDI_CH4U_comm_t {
     MPIDI_CH4U_rreq_t *posted_list;
     MPIDI_CH4U_rreq_t *unexp_list;
@@ -402,23 +419,6 @@ typedef struct {
 #define MPID_DEV_WIN_DECL        MPIDI_Devwin_t  dev;
 #define MPID_DEV_COMM_DECL       MPIDI_Devcomm_t dev;
 #define MPID_DEV_OP_DECL         MPIDI_Devop_t   dev;
-
-typedef struct {
-    union {
-    MPIDI_NM_ADDR_DECL} netmod;
-#ifdef MPIDI_BUILD_CH4_LOCALITY_INFO
-    MPIDI_locality_t is_local;
-#endif
-} MPIDI_av_entry_t;
-
-typedef struct {
-    MPIR_OBJECT_HEADER;
-    int size;
-    MPIDI_av_entry_t table[0];
-} MPIDI_av_table_t;
-
-extern MPIDI_av_table_t **MPIDI_av_table;
-extern MPIDI_av_table_t *MPIDI_av_table0;
 
 #define MPIDIU_get_av_table(avtid) (MPIDI_av_table[(avtid)])
 #define MPIDIU_get_av(avtid, lpid) (MPIDI_av_table[(avtid)]->table[(lpid)])
