@@ -150,6 +150,9 @@ MPL_STATIC_INLINE_PREFIX MPIDI_av_entry_t *MPIDIU_comm_rank_to_av(MPIR_Comm * co
         break;
     }
 
+    MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MAP, VERBOSE,
+                    (MPL_DBG_FDEST, " comm_to_av_addr: rank=%d, av addr=%p",
+                     rank, (void*)ret));
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIU_COMM_RANK_TO_AV);
     return ret;
 }
@@ -220,7 +223,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_CH4U_rank_is_local(int rank, MPIR_Comm * comm
                     (MPL_DBG_FDEST, " is_local=%d, rank=%d", ret, rank));
 #endif
 
-  fn_exit:
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_CH4U_RANK_IS_LOCAL);
     return ret;
 }

@@ -37,8 +37,13 @@
 
 #define MPIDI_CH4I_MAP_NOT_FOUND      ((void*)(-1UL))
 
-#define MAX_NETMOD_CONTEXTS 8
 #define MAX_PROGRESS_HOOKS 4
+
+/* VNI attributes */
+enum {
+    MPIDI_VNI_TX = 0x1, /* Can send */
+    MPIDI_VNI_RX = 0x2, /* Can receive */
+};
 
 #define MPIDI_CH4I_BUF_POOL_NUM (1024)
 #define MPIDI_CH4I_BUF_POOL_SZ (256)
@@ -275,7 +280,6 @@ typedef struct MPIDI_CH4_Global_t {
     MPIDI_CH4U_req_ext_t *cmpl_list;
     OPA_int_t exp_seq_no;
     OPA_int_t nxt_seq_no;
-    void *netmod_context[8];
     MPIU_buf_pool_t *buf_pool;
 } MPIDI_CH4_Global_t;
 extern MPIDI_CH4_Global_t MPIDI_CH4_Global;

@@ -18,8 +18,7 @@
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_init_hook(int rank, int size, int appnum, int *tag_ub,
                                                     MPIR_Comm * comm_world, MPIR_Comm * comm_self,
-                                                    int spawned, int num_contexts,
-                                                    void **netmod_contexts)
+                                                    int spawned, int *n_vnis_provided)
 {
     int ret;
 
@@ -27,7 +26,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_init_hook(int rank, int size, int appn
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_MPI_INIT_HOOK);
 
     ret = MPIDI_NM_func->mpi_init(rank, size, appnum, tag_ub, comm_world, comm_self, spawned,
-                                  num_contexts, netmod_contexts);
+                                  n_vnis_provided);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_MPI_INIT_HOOK);
     return ret;
@@ -46,21 +45,34 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_finalize_hook(void)
     return ret;
 }
 
-MPL_STATIC_INLINE_PREFIX int MPIDI_NM_progress(void *netmod_context, int blocking)
+MPL_STATIC_INLINE_PREFIX int MPIDI_NM_query_vni(int vni)
+{
+    int ret;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_NM_QUERY_VNI);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_QUERY_VNI);
+
+    ret = MPIDI_NM_func->query_vni(vni);
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_QUERY_VNI);
+    return ret;
+}
+
+MPL_STATIC_INLINE_PREFIX int MPIDI_NM_progress(int vni, int blocking)
 {
     int ret;
 
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_NM_PROGRESS);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_PROGRESS);
 
-    ret = MPIDI_NM_func->progress(netmod_context, blocking);
+    ret = MPIDI_NM_func->progress(vni, blocking);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_PROGRESS);
     return ret;
 }
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_comm_connect(const char *port_name, MPIR_Info * info,
-                                                       int root, MPIR_Comm * comm,
+                                                       int root, int timeout, MPIR_Comm * comm,
                                                        MPIR_Comm ** newcomm_ptr)
 {
     int ret;
@@ -68,7 +80,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_comm_connect(const char *port_name, MP
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_NM_MPI_COMM_CONNECT);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_MPI_COMM_CONNECT);
 
-    ret = MPIDI_NM_func->mpi_comm_connect(port_name, info, root, comm, newcomm_ptr);
+    ret = MPIDI_NM_func->mpi_comm_connect(port_name, info, root, timeout, comm, newcomm_ptr);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_MPI_COMM_CONNECT);
     return ret;
@@ -129,15 +141,14 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_comm_accept(const char *port_name, MPI
 }
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_send_hdr(int rank, MPIR_Comm * comm, int handler_id,
-                                                  const void *am_hdr, size_t am_hdr_sz,
-                                                  void *netmod_context)
+                                                  const void *am_hdr, size_t am_hdr_sz)
 {
     int ret;
 
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_NM_AM_SEND_HDR);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_AM_SEND_HDR);
 
-    ret = MPIDI_NM_func->am_send_hdr(rank, comm, handler_id, am_hdr, am_hdr_sz, netmod_context);
+    ret = MPIDI_NM_func->am_send_hdr(rank, comm, handler_id, am_hdr, am_hdr_sz);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_AM_SEND_HDR);
     return ret;
@@ -146,8 +157,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_send_hdr(int rank, MPIR_Comm * comm, in
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isend(int rank, MPIR_Comm * comm, int handler_id,
                                                const void *am_hdr, size_t am_hdr_sz,
                                                const void *data, MPI_Count count,
-                                               MPI_Datatype datatype, MPIR_Request * sreq,
-                                               void *netmod_context)
+                                               MPI_Datatype datatype, MPIR_Request * sreq)
 {
     int ret;
 
@@ -155,7 +165,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isend(int rank, MPIR_Comm * comm, int h
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_AM_ISEND);
 
     ret = MPIDI_NM_func->am_isend(rank, comm, handler_id, am_hdr, am_hdr_sz, data, count, datatype,
-                                  sreq, netmod_context);
+                                  sreq);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_AM_ISEND);
     return ret;
@@ -164,8 +174,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isend(int rank, MPIR_Comm * comm, int h
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isendv(int rank, MPIR_Comm * comm, int handler_id,
                                                 struct iovec *am_hdrs, size_t iov_len,
                                                 const void *data, MPI_Count count,
-                                                MPI_Datatype datatype, MPIR_Request * sreq,
-                                                void *netmod_context)
+                                                MPI_Datatype datatype, MPIR_Request * sreq)
 {
     int ret;
 
@@ -173,7 +182,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isendv(int rank, MPIR_Comm * comm, int 
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_AM_ISENDV);
 
     ret = MPIDI_NM_func->am_isendv(rank, comm, handler_id, am_hdrs, iov_len, data, count, datatype,
-                                   sreq, netmod_context);
+                                   sreq);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_AM_ISENDV);
     return ret;

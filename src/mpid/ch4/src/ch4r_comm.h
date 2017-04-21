@@ -47,6 +47,9 @@ MPL_STATIC_INLINE_PREFIX int MPIDIU_upids_to_lupids(int size,
                  * so CH4 don't care what node they are on
                  */
                 MPIDI_CH4_Global.node_map[_avtid][_lpid] = remote_node_ids[i];
+                if (remote_node_ids[i] >= MPIDI_CH4_Global.max_node_id) {
+                    MPIDI_CH4_Global.max_node_id = remote_node_ids[i] + 1;
+                }
 #ifdef MPIDI_BUILD_CH4_LOCALITY_INFO
                 MPIDI_av_table[_avtid]->table[_lpid].is_local = 0;
 #endif
@@ -178,6 +181,115 @@ MPL_STATIC_INLINE_PREFIX int MPIDIU_Intercomm_map_bcast_intra(MPIR_Comm *local_c
   fn_fail:
     MPIR_CHKPMEM_REAP();
     goto fn_exit;
+}
+
+#undef FUNCNAME
+#define FUNCNAME MPIDIU_alloc_lut
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+static inline int MPIDIU_alloc_lut(MPIDI_rank_map_lut_t ** lut, int size)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIDI_rank_map_lut_t *new_lut = NULL;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_ALLOC_LUT);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_ALLOC_LUT);
+
+    new_lut = (MPIDI_rank_map_lut_t *) MPL_malloc(sizeof(MPIDI_rank_map_lut_t)
+                                                  + size * sizeof(MPIDI_lpid_t));
+    if (new_lut == NULL) {
+        *lut = NULL;
+        MPIR_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**nomem");
+    }
+
+    MPIR_Object_set_ref(new_lut, 1);
+    *lut = new_lut;
+
+    MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MEMORY, VERBOSE,
+                    (MPL_DBG_FDEST, "alloc lut %p, size %ld, refcount=%d",
+                     new_lut, size * sizeof(MPIDI_lpid_t), MPIR_Object_get_ref(new_lut)));
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_ALLOC_LUT);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+#undef FUNCNAME
+#define FUNCNAME MPIDIU_release_lut
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+static inline int MPIDIU_release_lut(MPIDI_rank_map_lut_t * lut)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int count = 0;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIU_RELEASE_LUT);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIU_RELEASE_LUT);
+
+    MPIR_Object_release_ref(lut, &count);
+    MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MEMORY, VERBOSE, (MPL_DBG_FDEST, "dec ref to lut %p", lut));
+    if (count == 0) {
+        MPL_free(lut);
+        MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MEMORY, VERBOSE, (MPL_DBG_FDEST, "free lut %p", lut));
+    }
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIU_RELEASE_LUT);
+    return mpi_errno;
+}
+
+#undef FUNCNAME
+#define FUNCNAME MPIDIU_alloc_mlut
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+static inline int MPIDIU_alloc_mlut(MPIDI_rank_map_mlut_t ** mlut, int size)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIDI_rank_map_mlut_t *new_mlut = NULL;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIU_ALLOC_MLUT);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIU_ALLOC_MLUT);
+
+    new_mlut = (MPIDI_rank_map_mlut_t *) MPL_malloc(sizeof(MPIDI_rank_map_mlut_t)
+                                                    + size * sizeof(MPIDI_gpid_t));
+    if (new_mlut == NULL) {
+        *mlut = NULL;
+        MPIR_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**nomem");
+    }
+
+    MPIR_Object_set_ref(new_mlut, 1);
+    *mlut = new_mlut;
+
+    MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MEMORY, VERBOSE,
+                    (MPL_DBG_FDEST, "alloc mlut %p, size %ld, refcount=%d",
+                     new_mlut, size * sizeof(MPIDI_gpid_t), MPIR_Object_get_ref(new_mlut)));
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIU_ALLOC_MLUT);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+#undef FUNCNAME
+#define FUNCNAME MPIDIU_release_mlut
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+static inline int MPIDIU_release_mlut(MPIDI_rank_map_mlut_t * mlut)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int count = 0;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIU_RELEASE_MLUT);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIU_RELEASE_MLUT);
+
+    MPIR_Object_release_ref(mlut, &count);
+    MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MEMORY, VERBOSE, (MPL_DBG_FDEST, "dec ref to mlut %p", mlut));
+    if (count == 0) {
+        MPL_free(mlut);
+        MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MEMORY, VERBOSE, (MPL_DBG_FDEST, "free mlut %p", mlut));
+    }
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIU_RELEASE_MLUT);
+    return mpi_errno;
 }
 
 #endif /* ifndef CH4R_COMM_H_INCLUDED */

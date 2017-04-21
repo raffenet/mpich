@@ -408,7 +408,7 @@ typedef struct MPIDI_Devcomm_t {
 
 
 #define MPID_USE_NODE_IDS
-typedef uint16_t MPID_Node_id_t;
+typedef int16_t MPID_Node_id_t;
 
 typedef struct {
     union {

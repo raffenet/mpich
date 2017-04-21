@@ -107,8 +107,12 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
                                         int requested, int *provided, int *has_args, int *has_env)
 {
     int pmi_errno, mpi_errno = MPI_SUCCESS, rank, has_parent, size, appnum, thr_err;
-    void *netmod_contexts;
     int avtid;
+    int n_nm_vnis_provided;
+#ifdef MPIDI_BUILD_CH4_SHM
+    int n_shm_vnis_provided;
+#endif
+
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPID_INIT);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPID_INIT);
 
@@ -220,6 +224,10 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
     if (mpi_errno)
         MPIR_ERR_POP(mpi_errno);
 
+    MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_GENERAL, VERBOSE,
+                    (MPL_DBG_FDEST, "MPIDI_CH4_Global.max_node_id = %d",
+                     MPIDI_CH4_Global.max_node_id));
+
     for (i = 0; i < MPIR_Process.comm_world->local_size; i++) {
         MPIDI_av_table0->table[i].is_local =
             (MPIDI_CH4_Global.node_map[0][i] ==
@@ -233,23 +241,20 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
     }
 #endif
 
-    mpi_errno = MPIDI_NM_mpi_init_hook(rank, size, appnum, &MPIR_Process.attrs.tag_ub,
-                                       MPIR_Process.comm_world,
-                                       MPIR_Process.comm_self, has_parent, 1, &netmod_contexts);
-    if (mpi_errno != MPI_SUCCESS) {
-        MPIR_ERR_POPFATAL(mpi_errno);
-    }
-
 #ifdef MPIDI_BUILD_CH4_SHM
-    mpi_errno = MPIDI_SHM_mpi_init_hook(rank, size);
+    mpi_errno = MPIDI_SHM_mpi_init_hook(rank, size, &n_shm_vnis_provided);
 
     if (mpi_errno != MPI_SUCCESS) {
         MPIR_ERR_POPFATAL(mpi_errno);
     }
 #endif
 
+    mpi_errno = MPIDI_NM_mpi_init_hook(rank, size, appnum, &MPIR_Process.attrs.tag_ub,
+                                       MPIR_Process.comm_world,
+                                       MPIR_Process.comm_self, has_parent,
+                                       &n_nm_vnis_provided);
     if (mpi_errno != MPI_SUCCESS) {
-        MPIR_ERR_POP(mpi_errno);
+        MPIR_ERR_POPFATAL(mpi_errno);
     }
 
     MPIR_Process.attrs.appnum = appnum;
@@ -518,7 +523,7 @@ MPL_STATIC_INLINE_PREFIX int MPID_Create_intercomm_from_lpids(MPIR_Comm * newcom
     MPIDI_rank_map_mlut_t *mlut = NULL;
     MPIDI_COMM(newcomm_ptr, map).mode = MPIDI_RANK_MAP_MLUT;
     MPIDI_COMM(newcomm_ptr, map).avtid = -1;
-    mpi_errno = MPIDI_alloc_mlut(&mlut, size);
+    mpi_errno = MPIDIU_alloc_mlut(&mlut, size);
     if (mpi_errno != MPI_SUCCESS) {
         MPIR_ERR_POP(mpi_errno);
     }
