@@ -837,16 +837,18 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
             MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Put(MPIDI_Global.kvsname, keyS, val), pmi);
             MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Commit(MPIDI_Global.kvsname), pmi);
 #endif
-            /* identify other node roots */
-            node_roots = MPL_malloc(sizeof(int) * num_nodes);
-            for (i = 0; i < num_nodes; i++)
-                node_roots[i] = -1;
-            for (i = 0; i < size; i++)
-                if (node_roots[MPIDI_CH4_Global.node_map[0][i]] == -1)
-                    node_roots[MPIDI_CH4_Global.node_map[0][i]] = i;
         }
 
-        PMI_Barrier();
+        /* identify other node roots */
+        node_roots = MPL_malloc(sizeof(int) * num_nodes);
+        for (i = 0; i < num_nodes; i++)
+            node_roots[i] = -1;
+        for (i = 0; i < size; i++)
+            if (node_roots[MPIDI_CH4_Global.node_map[0][i]] == -1)
+                node_roots[MPIDI_CH4_Global.node_map[0][i]] = i;
+
+        MPIDU_shm_seg_alloc(num_nodes * MPIDI_Global.addrnamelen, (void **)&table);
+        MPIDU_shm_seg_commit(&memory, &barrier, num_local, local_rank, local_rank_0, rank);
 
         /* initialize address vector */
         for (i = 0; i < size; i++) {
@@ -861,8 +863,6 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         }
 
         if (rank == local_rank_0) {
-            table = MPL_malloc(num_nodes * MPIDI_Global.addrnamelen);
-            mapped_table = MPL_malloc(num_nodes * sizeof(fi_addr_t));
             for (i = 0; i < num_nodes; i++) {
                 sprintf(keyS, "OFI-%d", node_roots[i]);
 #ifdef USE_PMI2_API
@@ -878,18 +878,17 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
                                    (valS, "OFI", (char *) &table[i * MPIDI_Global.addrnamelen],
                                     MPIDI_Global.addrnamelen, &maxlen), buscard_len);
             }
-
-            MPIDI_OFI_CALL(fi_av_insert(MPIDI_Global.av, table, num_nodes, mapped_table, 0ULL, NULL), avmap);
-
-            for (i = 0; i < num_nodes; i++) {
-                MPIDI_OFI_AV(&MPIDIU_get_av(0, node_roots[i])).dest = mapped_table[i];
-            }
-
-            MPL_free(node_roots);
-            MPL_free(table);
-            MPL_free(mapped_table);
         }
-
+        mapped_table = MPL_malloc(num_nodes * sizeof(fi_addr_t));
+        MPIDU_shm_barrier(barrier, num_local);
+        MPIDI_OFI_CALL(fi_av_insert(MPIDI_Global.av, table, num_nodes, mapped_table, 0ULL, NULL), avmap);
+        for (i = 0; i < num_nodes; i++) {
+            MPIDI_OFI_AV(&MPIDIU_get_av(0, node_roots[i])).dest = mapped_table[i];
+        }
+        MPIDU_shm_barrier(barrier, num_local);
+        MPL_free(mapped_table);
+        MPL_free(node_roots);
+        MPIDU_shm_seg_destroy(&memory, num_local);
         PMI_Barrier();
         /* all the node roots are now able to communicate */
     }
