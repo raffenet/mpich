@@ -43,12 +43,7 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
 
     /* if this is MPI_COMM_WORLD, finish bc exchange */
     if (comm == MPIR_Process.comm_world && !comm_world_initialized) {
-        struct MPIDI_OFI_rank_addr {
-            char addrname[MPIDI_Global.addrnamelen];
-        };
-        MPIDU_shm_seg_t memory;
-        MPIDU_shm_barrier_t *barrier;
-        struct MPIDI_OFI_rank_addr *table, *local_table;
+        char *table = MPIDI_Global.table, *local_table;
         int i, local_rank, local_rank_0 = -1, num_local = 0;
         fi_addr_t *mapped_table;
         int rank = MPIR_Comm_rank(comm);
@@ -94,21 +89,18 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
                 offset += procs_per_node[i];
         }
 
-        MPIDU_shm_seg_alloc((size - num_nodes) * sizeof(struct MPIDI_OFI_rank_addr), (void **)&table);
-        MPIDU_shm_seg_commit(&memory, &barrier, num_local, local_rank, local_rank_0, rank);
-
         /* copy info */
         if (rank != local_rank_0) {
-            local_table = &table[offset];
-            memcpy(local_table[local_rank - 1].addrname, MPIDI_Global.addrname, MPIDI_Global.addrnamelen);
+            local_table = &table[offset * MPIDI_Global.addrnamelen];
+            memcpy(&local_table[(local_rank - 1) * MPIDI_Global.addrnamelen], MPIDI_Global.addrname, MPIDI_Global.addrnamelen);
         }
 
-        MPIDU_shm_barrier(barrier, num_local);
+        MPIDU_shm_barrier(MPIDI_Global.barrier, num_local);
         if (rank == local_rank_0) {
             MPIR_Errflag_t errflag = MPIR_ERR_NONE;
             MPIR_Comm *allgather_comm = comm->node_roots_comm ? comm->node_roots_comm : comm;
             if (uniform) {
-                MPIR_Allgather_impl(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, table, (num_local - 1) * sizeof(struct MPIDI_OFI_rank_addr),
+                MPIR_Allgather_impl(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, table, (num_local - 1) * MPIDI_Global.addrnamelen,
                                     MPI_BYTE, allgather_comm, &errflag);
             } else {
                 /* convert procs_per_node to recvcounts */
@@ -123,7 +115,7 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
                                      MPI_BYTE, allgather_comm, &errflag);
             }
         }
-        MPIDU_shm_barrier(barrier, num_local);
+        MPIDU_shm_barrier(MPIDI_Global.barrier, num_local);
 
         mapped_table = MPL_malloc((size - num_nodes) * sizeof(fi_addr_t));
         double start = MPI_Wtime();
@@ -151,8 +143,8 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
             }
         }
 
-        MPIDU_shm_barrier(barrier, num_local);
-        MPIDU_shm_seg_destroy(&memory, num_local);
+        MPIDU_shm_barrier(MPIDI_Global.barrier, num_local);
+        MPIDU_shm_seg_destroy(&MPIDI_Global.memory, num_local);
         MPL_free(mapped_table);
         PMI_Barrier();
         /* now everyone can communicate */

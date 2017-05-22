@@ -21,6 +21,7 @@
 #include "ch4_types.h"
 #include "mpidch4r.h"
 #include "fi_list.h"
+#include "mpidu_shm.h"
 
 #define __SHORT_FILE__                          \
     (strrchr(__FILE__,'/')                      \
@@ -422,6 +423,10 @@ typedef struct {
 #ifdef MPIDI_OFI_ENABLE_RUNTIME_CHECKS
     MPIDI_OFI_capabilities_t settings;
 #endif
+
+    MPIDU_shm_seg_t memory;
+    MPIDU_shm_barrier_t *barrier;
+    void *table;
 } MPIDI_OFI_global_t;
 
 typedef struct {
