@@ -830,12 +830,13 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
             sprintf(keyS, "OFI-%d", rank);
 #ifdef USE_PMI2_API
             MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Put(keyS, val), pmi);
-            MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Fence(), pmi);
+        }
+        MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Fence(), pmi);
 #else
             MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Put(MPIDI_Global.kvsname, keyS, val), pmi);
             MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Commit(MPIDI_Global.kvsname), pmi);
-#endif
         }
+#endif
 
         /* identify other node roots */
         node_roots = MPL_malloc(sizeof(int) * num_nodes);
@@ -887,7 +888,11 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         MPIDU_shm_barrier(MPIDI_Global.barrier, num_local);
         MPL_free(mapped_table);
         MPL_free(node_roots);
+#ifdef USE_PMI2_API
+        PMI2_KVS_Fence();
+#else
         PMI_Barrier();
+#endif
         /* all the node roots are now able to communicate */
     }
 

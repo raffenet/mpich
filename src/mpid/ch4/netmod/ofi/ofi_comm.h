@@ -146,7 +146,11 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
         MPIDU_shm_barrier(MPIDI_Global.barrier, num_local);
         MPIDU_shm_seg_destroy(&MPIDI_Global.memory, num_local);
         MPL_free(mapped_table);
+#ifdef USE_PMI2_API
+        PMI2_KVS_Fence();
+#else
         PMI_Barrier();
+#endif
         /* now everyone can communicate */
     out:
         comm_world_initialized = 1;
