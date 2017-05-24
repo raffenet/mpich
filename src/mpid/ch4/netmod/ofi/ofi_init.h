@@ -862,25 +862,28 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
 #endif
         }
 
-        if (rank == local_rank_0) {
-            for (i = 0; i < num_nodes; i++) {
-                sprintf(keyS, "OFI-%d", node_roots[i]);
+        start = local_rank * (num_nodes / num_local);
+        end = start + (num_nodes / num_local);
+        if (local_rank == num_local - 1)
+            end += num_nodes % num_local;
+        for (i = start; i < end; i++) {
+            sprintf(keyS, "OFI-%d", node_roots[i]);
 #ifdef USE_PMI2_API
-                int vallen;
-                MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Get
-                                       (NULL, -1, keyS, valS, MPIDI_KVSAPPSTRLEN, &vallen), pmi);
-                MPIR_Assert(vallen > 0);
+            int vallen;
+            MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Get
+                                   (NULL, -1, keyS, valS, MPIDI_KVSAPPSTRLEN, &vallen), pmi);
+            MPIR_Assert(vallen > 0);
 #else
-                MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Get
-                                       (MPIDI_Global.kvsname, keyS, valS, MPIDI_KVSAPPSTRLEN), pmi);
+            MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Get
+                                   (MPIDI_Global.kvsname, keyS, valS, MPIDI_KVSAPPSTRLEN), pmi);
 #endif
-                MPIDI_OFI_STR_CALL(MPL_str_get_binary_arg
-                                   (valS, "OFI", (char *) &table[i * MPIDI_Global.addrnamelen],
-                                    MPIDI_Global.addrnamelen, &maxlen), buscard_len);
-            }
+            MPIDI_OFI_STR_CALL(MPL_str_get_binary_arg
+                               (valS, "OFI", (char *) &table[i * MPIDI_Global.addrnamelen],
+                                MPIDI_Global.addrnamelen, &maxlen), buscard_len);
         }
-        mapped_table = MPL_malloc(num_nodes * sizeof(fi_addr_t));
         MPIDU_shm_barrier(MPIDI_Global.barrier, num_local);
+
+        mapped_table = MPL_malloc(num_nodes * sizeof(fi_addr_t));
         MPIDI_OFI_CALL(fi_av_insert(MPIDI_Global.av, table, num_nodes, mapped_table, 0ULL, NULL), avmap);
         for (i = 0; i < num_nodes; i++) {
             MPIDI_OFI_AV(&MPIDIU_get_av(0, node_roots[i])).dest = mapped_table[i];
