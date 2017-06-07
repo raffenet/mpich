@@ -1,5 +1,8 @@
 AC_INIT
 
+AC_CONFIG_AUX_DIR([../../confdb])
+AC_CONFIG_MACRO_DIR([../../confdb])
+
 AC_ARG_WITH(aint-size,
     AC_HELP_STRING([--with-aint-size],
                    [Override the size of MPI_AINT (in bytes)]),,
