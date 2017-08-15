@@ -117,13 +117,31 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
 
         mapped_table = MPL_malloc(size * sizeof(fi_addr_t));
         if (MPII_Comm_is_node_consecutive(comm)) {
+            int j;
+            int last_unspec_dest = 0;
             for (i = 0; i < size; i++) {
                 /* only insert new addresses */
-                if (MPIDI_OFI_AV(&MPIDIU_get_av(0, i)).dest == FI_ADDR_UNSPEC) {
-                    fi_av_insert(MPIDI_Global.av, table[i].addrname, 1, &mapped_table[i], 0ULL, NULL);
-                    MPIDI_OFI_AV(&MPIDIU_get_av(0, i)).dest = mapped_table[i];
+                if (MPIDI_OFI_AV(&MPIDIU_get_av(0, i)).dest != FI_ADDR_UNSPEC) {
+                    fi_av_insert(MPIDI_Global.av, &table[last_unspec_dest],
+                                 i - last_unspec_dest,
+                                 &mapped_table[last_unspec_dest], 0ULL, NULL);
+
+                    for (j = last_unspec_dest; j < i; j++) {
+                        MPIDI_OFI_AV(&MPIDIU_get_av(0, j)).dest = mapped_table[j];
+                    }
+
+                    last_unspec_dest = i + 1;
                 }
             }
+
+            fi_av_insert(MPIDI_Global.av, &table[last_unspec_dest],
+                         size - last_unspec_dest,
+                         &mapped_table[last_unspec_dest], 0ULL, NULL);
+
+            for (j = last_unspec_dest; j < size; j++) {
+                MPIDI_OFI_AV(&MPIDIU_get_av(0, j)).dest = mapped_table[j];
+            }
+
         } else {
             int ranks[size];
             int j;
