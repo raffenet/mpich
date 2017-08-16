@@ -117,12 +117,9 @@ static inline int MPIDI_NM_mpi_comm_create_hook(MPIR_Comm * comm)
 
         mapped_table = MPL_malloc(size * sizeof(fi_addr_t));
         if (MPII_Comm_is_node_consecutive(comm)) {
+            fi_av_insert(MPIDI_Global.av, table, size, mapped_table, 0ULL, NULL);
             for (i = 0; i < size; i++) {
-                /* only insert new addresses */
-                if (MPIDI_OFI_AV(&MPIDIU_get_av(0, i)).dest == FI_ADDR_UNSPEC) {
-                    fi_av_insert(MPIDI_Global.av, table[i].addrname, 1, &mapped_table[i], 0ULL, NULL);
-                    MPIDI_OFI_AV(&MPIDIU_get_av(0, i)).dest = mapped_table[i];
-                }
+                MPIDI_OFI_AV(&MPIDIU_get_av(0, i)).dest = mapped_table[i];
             }
         } else {
             int ranks[size];
