@@ -15,20 +15,20 @@
 #include <sys/types.h>
 #endif
 
-#include "mpidu_dataloop.h"
+#include "mpir_dataloop.h"
 #include "mpid_thread.h"
 #include "mpid_sched.h"
 #include "mpid_timers_fallback.h"
 #include "netmodpre.h"
 #include "shmpre.h"
 #include "mpl_uthash.h"
+#include "ch4_coll_params.h"
 
 typedef struct {
     union {
     MPIDI_NM_DT_DECL} netmod;
 } MPIDI_Devdt_t;
 #define MPID_DEV_DATATYPE_DECL   MPIDI_Devdt_t   dev;
-#include "mpid_datatype_fallback.h"
 
 typedef int MPID_Progress_state;
 
@@ -453,6 +453,9 @@ extern MPIDI_av_table_t *MPIDI_av_table0;
 #define HAVE_DEV_COMM_HOOK
 #define MPID_Comm_create_hook   MPIDI_Comm_create_hook
 #define MPID_Comm_free_hook     MPIDI_Comm_free_hook
+
+MPL_STATIC_INLINE_PREFIX int MPIDI_Type_commit_hook(MPIR_Datatype * type);
+MPL_STATIC_INLINE_PREFIX int MPIDI_Type_free_hook(MPIR_Datatype * type);
 
 #define MPID_Type_commit_hook   MPIDI_Type_commit_hook
 #define MPID_Type_free_hook     MPIDI_Type_free_hook

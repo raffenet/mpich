@@ -17,13 +17,13 @@
 #define FUNCNAME MPIDI_OFI_handle_cq_error_util
 #undef FCNAME
 #define FCNAME MPL_QUOTE(FUNCNAME)
-int MPIDI_OFI_handle_cq_error_util(ssize_t ret)
+int MPIDI_OFI_handle_cq_error_util(int vni_idx, ssize_t ret)
 {
     int mpi_errno;
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_NETMOD_OFI_HANDLE_CQ_ERROR);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_NETMOD_OFI_HANDLE_CQ_ERROR);
 
-    mpi_errno = MPIDI_OFI_handle_cq_error(ret);
+    mpi_errno = MPIDI_OFI_handle_cq_error(vni_idx, ret);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_NETMOD_OFI_HANDLE_CQ_ERROR);
     return mpi_errno;
@@ -226,6 +226,9 @@ static inline int MPIDI_OFI_win_lock_advance(MPIR_Win * win)
             MPIDI_OFI_win_control_t info;
             info.type = MPIDI_OFI_CTRL_LOCKALLACK;
             mpi_errno = MPIDI_OFI_do_control_win(&info, lock->rank, win, 1, 0);
+
+            if (mpi_errno != MPI_SUCCESS)
+                MPIR_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC, goto fn_fail, "**rmasync");
         }
         else
             MPIR_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC, goto fn_fail, "**rmasync");
@@ -348,10 +351,11 @@ static inline void MPIDI_OFI_win_unlock_done_proc(const MPIDI_OFI_win_control_t 
 
 /* Translate the control message to get a huge message into a request to
  * actually perform the data transfer. */
-static inline void MPIDI_OFI_get_huge(MPIDI_OFI_send_control_t * info)
+static inline int MPIDI_OFI_get_huge(MPIDI_OFI_send_control_t * info)
 {
     MPIDI_OFI_huge_recv_t *recv = NULL;
     MPIR_Comm *comm_ptr;
+    int mpi_errno = MPI_SUCCESS;
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_NETMOD_OFI_GET_HUGE);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_NETMOD_OFI_GET_HUGE);
 
@@ -388,6 +392,7 @@ static inline void MPIDI_OFI_get_huge(MPIDI_OFI_send_control_t * info)
 
         /* If this is unexpected, create a new tracker and put it in the unexpected list. */
         recv = (MPIDI_OFI_huge_recv_t *) MPL_calloc(sizeof(*recv), 1);
+        if (!recv) MPIR_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**nomem");
 
         MPL_LL_APPEND(MPIDI_unexp_huge_recv_head, MPIDI_unexp_huge_recv_tail, recv);
     }
@@ -400,6 +405,11 @@ static inline void MPIDI_OFI_get_huge(MPIDI_OFI_send_control_t * info)
     MPIDI_OFI_get_huge_event(NULL, (MPIR_Request *) recv);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_NETMOD_OFI_GET_HUGE);
+
+  fn_exit:
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
 }
 
 int MPIDI_OFI_control_handler(int handler_id, void *am_hdr,
@@ -418,14 +428,14 @@ int MPIDI_OFI_control_handler(int handler_id, void *am_hdr,
     switch (control->type) {
     case MPIDI_OFI_CTRL_HUGEACK:{
             MPIDI_OFI_send_control_t *ctrlsend = (MPIDI_OFI_send_control_t *) buf;
-            MPIDI_OFI_dispatch_function(NULL, ctrlsend->ackreq, 0);
+            mpi_errno = MPIDI_OFI_dispatch_function(NULL, ctrlsend->ackreq, 0);
             goto fn_exit;
         }
         break;
 
     case MPIDI_OFI_CTRL_HUGE:{
             MPIDI_OFI_send_control_t *ctrlsend = (MPIDI_OFI_send_control_t *) buf;
-            MPIDI_OFI_get_huge(ctrlsend);
+            mpi_errno = MPIDI_OFI_get_huge(ctrlsend);
             goto fn_exit;
         }
         break;
@@ -563,32 +573,26 @@ static inline int mpi_to_ofi(MPI_Datatype dt, enum fi_datatype *fi_dt, MPI_Op op
     case MPI_SUM:
         *fi_op = FI_SUM;
         goto fn_exit;
-        break;
 
     case MPI_PROD:
         *fi_op = FI_PROD;
         goto fn_exit;
-        break;
 
     case MPI_MAX:
         *fi_op = FI_MAX;
         goto fn_exit;
-        break;
 
     case MPI_MIN:
         *fi_op = FI_MIN;
         goto fn_exit;
-        break;
 
     case MPI_BAND:
         *fi_op = FI_BAND;
         goto fn_exit;
-        break;
 
     case MPI_BOR:
         *fi_op = FI_BOR;
         goto fn_exit;
-        break;
 
     case MPI_BXOR:
         *fi_op = FI_BXOR;
@@ -601,7 +605,6 @@ static inline int mpi_to_ofi(MPI_Datatype dt, enum fi_datatype *fi_dt, MPI_Op op
 
         *fi_op = FI_LAND;
         goto fn_exit;
-        break;
 
     case MPI_LOR:
         if (isLONG_DOUBLE(dt))
@@ -609,7 +612,6 @@ static inline int mpi_to_ofi(MPI_Datatype dt, enum fi_datatype *fi_dt, MPI_Op op
 
         *fi_op = FI_LOR;
         goto fn_exit;
-        break;
 
     case MPI_LXOR:
         if (isLONG_DOUBLE(dt))
@@ -617,29 +619,24 @@ static inline int mpi_to_ofi(MPI_Datatype dt, enum fi_datatype *fi_dt, MPI_Op op
 
         *fi_op = FI_LXOR;
         goto fn_exit;
-        break;
 
     case MPI_REPLACE:{
             *fi_op = FI_ATOMIC_WRITE;
             goto fn_exit;
-            break;
         }
 
     case MPI_NO_OP:{
             *fi_op = FI_ATOMIC_READ;
             goto fn_exit;
-            break;
         }
 
     case MPI_OP_NULL:{
             *fi_op = FI_CSWAP;
             goto fn_exit;
-            break;
         }
 
     default:
         goto fn_fail;
-        break;
     }
 
   fn_exit:
@@ -690,7 +687,7 @@ static MPI_Op mpi_ops[] = {
 #define _TBL MPIDI_Global.win_op_table[i][j]
 #define CHECK_ATOMIC(fcn,field1,field2)            \
   atomic_count = 0;                                \
-  ret = fcn(MPIDI_OFI_EP_TX_RMA(0),                          \
+  ret = fcn(MPIDI_Global.ctx[0].tx,                \
     fi_dt,                                 \
     fi_op,                                 \
             &atomic_count);                        \
@@ -752,7 +749,7 @@ static inline void create_dt_map()
 static inline void add_index(MPI_Datatype datatype, int *index)
 {
     MPIR_Datatype *dt_ptr;
-    MPID_Datatype_get_ptr(datatype, dt_ptr);
+    MPIR_Datatype_get_ptr(datatype, dt_ptr);
     MPIDI_OFI_DATATYPE(dt_ptr).index = *index;
     (*index)++;
 }

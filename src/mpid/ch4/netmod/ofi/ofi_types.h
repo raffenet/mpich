@@ -28,8 +28,6 @@
      : __FILE__                                 \
 )
 #define MPIDI_OFI_MAP_NOT_FOUND            ((void*)(-1UL))
-#define MPIDI_OFI_MAJOR_VERSION            1
-#define MPIDI_OFI_MINOR_VERSION            0
 #define MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE  (16 * 1024)
 #define MPIDI_OFI_NUM_AM_BUFFERS           (8)
 #define MPIDI_OFI_AM_BUFF_SZ               (1 * 1024 * 1024)
@@ -117,11 +115,6 @@
 #endif
 #define MPIDI_OFI_OP_SIZES 15
 
-#define MPIDI_OFI_API_TAG 0
-#define MPIDI_OFI_API_RMA 1
-#define MPIDI_OFI_API_MSG 2
-#define MPIDI_OFI_API_CTR 3
-
 #define MPIDI_OFI_THREAD_UTIL_MUTEX     MPIDI_Global.mutexes[0].m
 #define MPIDI_OFI_THREAD_PROGRESS_MUTEX MPIDI_Global.mutexes[1].m
 #define MPIDI_OFI_THREAD_FI_MUTEX       MPIDI_Global.mutexes[2].m
@@ -171,13 +164,6 @@ static inline int MPIDI_OFI_comm_to_ep(MPIR_Comm *comm_ptr, int rank)
 #endif
 #endif
 }
-#define MPIDI_OFI_EP_TX_TAG(x) MPIDI_Global.ctx[x].tx_tag
-#define MPIDI_OFI_EP_TX_RMA(x) MPIDI_Global.ctx[x].tx_rma
-#define MPIDI_OFI_EP_TX_MSG(x) MPIDI_Global.ctx[x].tx_msg
-#define MPIDI_OFI_EP_TX_CTR(x) MPIDI_Global.ctx[x].tx_ctr
-#define MPIDI_OFI_EP_RX_TAG(x) MPIDI_Global.ctx[x].rx_tag
-#define MPIDI_OFI_EP_RX_RMA(x) MPIDI_Global.ctx[x].rx_rma
-#define MPIDI_OFI_EP_RX_MSG(x) MPIDI_Global.ctx[x].rx_msg
 
 #define MPIDI_OFI_DO_SEND        0
 #define MPIDI_OFI_DO_INJECT      1
@@ -243,21 +229,21 @@ enum {
 
 typedef struct {
     char pad[MPIDI_REQUEST_HDR_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     int index;
 } MPIDI_OFI_am_repost_request_t;
 
 typedef struct {
     char pad[MPIDI_REQUEST_HDR_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     MPIR_Request *signal_req;
 } MPIDI_OFI_ssendack_request_t;
 
 typedef struct {
     char pad[MPIDI_REQUEST_HDR_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     int done;
     uint32_t tag;
@@ -278,18 +264,9 @@ typedef struct {
 } MPIDI_OFI_atomic_valid_t;
 
 typedef struct {
-    struct fid_ep *tx_tag;
-    struct fid_ep *rx_tag;
-
-    struct fid_ep *tx_rma;
-    struct fid_ep *rx_rma;
-
-    struct fid_ep *tx_msg;
-    struct fid_ep *rx_msg;
-
-    struct fid_ep *tx_ctr;
-
-    int ctx_offset;
+    struct fid_ep *tx;
+    struct fid_ep *rx;
+    struct fid_cq *cq;
 } MPIDI_OFI_context_t;
 
 typedef union {
@@ -329,6 +306,8 @@ typedef struct {
     int context_bits;
     int source_bits;
     int tag_bits;
+    int major_version;
+    int minor_version;
 } MPIDI_OFI_capabilities_t;
 
 typedef struct {
@@ -371,11 +350,12 @@ typedef struct {
     uint64_t max_mr_key_size;
     int max_windows_bits;
     int max_huge_rma_bits;
-    int max_huge_rmas;
+    uint64_t max_huge_rmas;
     int huge_rma_shift;
     int context_shift;
     size_t iov_limit;
     size_t rma_iov_limit;
+    int max_ch4_vnis;
 
     /* Mutexex and endpoints */
     MPIDI_OFI_cacheline_mutex_t mutexes[4];
@@ -408,7 +388,6 @@ typedef struct {
     /* Process management and PMI globals */
     int pname_set;
     int pname_len;
-    int jobid;
     char addrname[FI_NAME_MAX];
     size_t addrnamelen;
     char kvsname[MPIDI_KVSAPPSTRLEN];
@@ -417,6 +396,9 @@ typedef struct {
 
     /* Communication info for dynamic processes */
     MPIDI_OFI_conn_manager_t conn_mgr;
+
+    /* complete request used for lightweight sends */
+    MPIR_Request *lw_send_req;
 
     /* Capability settings */
 #ifdef MPIDI_OFI_ENABLE_RUNTIME_CHECKS
@@ -491,7 +473,7 @@ typedef struct {
 
 typedef struct {
     char pad[MPIDI_REQUEST_HDR_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     struct MPIDI_Iovec_array *next;
     union {
@@ -529,7 +511,7 @@ typedef struct {
 typedef struct MPIDI_OFI_win_request {
     MPIR_OBJECT_HEADER;
     char pad[MPIDI_REQUEST_HDR_SIZE - MPIDI_OFI_OBJECT_HEADER_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     struct MPIDI_OFI_win_request *next;
     int target_rank;
@@ -538,14 +520,14 @@ typedef struct MPIDI_OFI_win_request {
 
 typedef struct {
     char pad[MPIDI_REQUEST_HDR_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     MPIR_Request *parent;       /* Parent request           */
 } MPIDI_OFI_chunk_request;
 
 typedef struct MPIDI_OFI_huge_recv {
     char pad[MPIDI_REQUEST_HDR_SIZE];
-    struct fi_context context;  /* fixed field, do not move */
+    struct fi_context context[MPIDI_OFI_CONTEXT_STRUCTS];  /* fixed field, do not move */
     int event_id;               /* fixed field, do not move */
     int (*done_fn) (struct fi_cq_tagged_entry * wc, MPIR_Request * req);
     MPIDI_OFI_send_control_t remote_info;
@@ -556,12 +538,6 @@ typedef struct MPIDI_OFI_huge_recv {
     struct MPIDI_OFI_huge_recv *next; /* Points to the next entry in the unexpected list
                                          * (when in the unexpected list) */
 } MPIDI_OFI_huge_recv_t;
-
-typedef struct MPIDI_OFI_huge_counter_t {
-    uint16_t counter;
-    uint16_t outstanding;
-    struct fid_mr *mr;
-} MPIDI_OFI_huge_counter_t;
 
 /* The list of posted huge receives that haven't been matched yet. These need
  * to get matched up when handling the control message that starts transfering

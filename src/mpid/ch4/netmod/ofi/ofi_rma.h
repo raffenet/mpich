@@ -52,7 +52,7 @@
             b = a;                              \
         else {                                  \
             MPIR_Datatype *dt_ptr;              \
-            MPID_Datatype_get_ptr(a,dt_ptr);    \
+            MPIR_Datatype_get_ptr(a,dt_ptr);    \
             b = dt_ptr->basic_type;             \
         }                                       \
     } while (0)
@@ -136,7 +136,7 @@ MPL_STATIC_INLINE_PREFIX
     size_t MPIDI_OFI_count_iov(int dt_count, MPI_Datatype dt_datatype, size_t max_pipe)
 {
     struct MPIDI_OFI_contig_blocks_params params;
-    MPID_Segment dt_seg;
+    MPIR_Segment dt_seg;
     ssize_t dt_size, num, rem;
     size_t dtc, count, count1, count2;;
 
@@ -152,8 +152,8 @@ MPL_STATIC_INLINE_PREFIX
         params.last_loc = 0;
         params.start_loc = 0;
         params.last_chunk = 0;
-        MPIDU_Segment_init(NULL, 1, dt_datatype, &dt_seg, 0);
-        MPIDU_Segment_manipulate(&dt_seg, 0, &dt_size,
+        MPIR_Segment_init(NULL, 1, dt_datatype, &dt_seg, 0);
+        MPIR_Segment_manipulate(&dt_seg, 0, &dt_size,
                                  MPIDI_OFI_contig_count_block,
                                  NULL, NULL, NULL, NULL, (void *) &params);
         count1 = params.count;
@@ -161,8 +161,8 @@ MPL_STATIC_INLINE_PREFIX
         params.last_loc = 0;
         params.start_loc = 0;
         params.last_chunk = 0;
-        MPIDU_Segment_init(NULL, dtc, dt_datatype, &dt_seg, 0);
-        MPIDU_Segment_manipulate(&dt_seg, 0, &dt_size,
+        MPIR_Segment_init(NULL, dtc, dt_datatype, &dt_seg, 0);
+        MPIR_Segment_manipulate(&dt_seg, 0, &dt_size,
                                  MPIDI_OFI_contig_count_block,
                                  NULL, NULL, NULL, NULL, (void *) &params);
         count2 = params.count;
@@ -229,7 +229,7 @@ static inline int MPIDI_OFI_query_datatype(MPI_Datatype dt,
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_OFI_QUERY_DATATYPE);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_OFI_QUERY_DATATYPE);
 
-    MPID_Datatype_get_ptr(dt, dt_ptr);
+    MPIR_Datatype_get_ptr(dt, dt_ptr);
 
     /* OP_NULL is the oddball                          */
     /* todo...change configure to table this correctly */
@@ -301,10 +301,10 @@ static inline void MPIDI_OFI_win_datatype_map(MPIDI_OFI_win_datatype_t * dt)
         dt->map = (DLOOP_VECTOR *) MPL_malloc(map_size * sizeof(DLOOP_VECTOR));
         MPIR_Assert(dt->map != NULL);
 
-        MPID_Segment seg;
+        MPIR_Segment seg;
         DLOOP_Offset last = dt->pointer->size * dt->count;
-        MPIDU_Segment_init(NULL, dt->count, dt->type, &seg, 0);
-        MPIDU_Segment_pack_vector(&seg, 0, &last, dt->map, &dt->num_contig);
+        MPIR_Segment_init(NULL, dt->count, dt->type, &seg, 0);
+        MPIR_Segment_pack_vector(&seg, 0, &last, dt->map, &dt->num_contig);
         MPIR_Assert((unsigned) dt->num_contig <= map_size);
     }
 
@@ -512,7 +512,7 @@ static inline int MPIDI_OFI_do_put(const void *origin_addr,
 
     req->event_id = MPIDI_OFI_EVENT_ABORT;
     msg.desc = NULL;
-    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank, MPIDI_OFI_API_RMA);
+    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank);
     msg.context = NULL;
     msg.data = 0;
     req->next = MPIDI_OFI_WIN(win).syncQ;
@@ -615,8 +615,7 @@ static inline int MPIDI_NM_mpi_put(const void *origin_addr,
         MPIDI_OFI_CALL_RETRY2(MPIDI_OFI_win_cntr_incr(win),
                               fi_inject_write(MPIDI_OFI_WIN(win).ep_nocmpl,
                                               (char *) origin_addr + origin_true_lb, target_bytes,
-                                              MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank,
-                                                                     MPIDI_OFI_API_RMA),
+                                              MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank),
                                               (uint64_t) MPIDI_OFI_winfo_base(win, target_rank)
                                               + target_disp * MPIDI_OFI_winfo_disp_unit(win,
                                                                                         target_rank)
@@ -673,7 +672,7 @@ static inline int MPIDI_OFI_do_get(void *origin_addr,
     offset = target_disp * MPIDI_OFI_winfo_disp_unit(win, target_rank);
     req->event_id = MPIDI_OFI_EVENT_ABORT;
     msg.desc = NULL;
-    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank, MPIDI_OFI_API_RMA);
+    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank);
     msg.context = NULL;
     msg.data = 0;
     req->next = MPIDI_OFI_WIN(win).syncQ;
@@ -783,7 +782,7 @@ static inline int MPIDI_NM_mpi_get(void *origin_addr,
         msg.desc = NULL;
         msg.msg_iov = &iov;
         msg.iov_count = 1;
-        msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank, MPIDI_OFI_API_RMA);
+        msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank);
         msg.rma_iov = &riov;
         msg.rma_iov_count = 1;
         msg.context = NULL;
@@ -939,7 +938,7 @@ static inline int MPIDI_NM_mpi_compare_and_swap(const void *origin_addr,
     msg.msg_iov = &originv;
     msg.desc = NULL;
     msg.iov_count = 1;
-    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank, MPIDI_OFI_API_RMA);
+    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank);
     msg.rma_iov = &targetv;
     msg.rma_iov_count = 1;
     msg.datatype = fi_dt;
@@ -1088,7 +1087,7 @@ static inline int MPIDI_OFI_do_accumulate(const void *origin_addr,
                                req->noncontig->origin_dt.map, req->noncontig->target_dt.map);
 
     msg.desc = NULL;
-    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank, MPIDI_OFI_API_RMA);
+    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank);
     msg.context = NULL;
     msg.data = 0;
     msg.datatype = fi_dt;
@@ -1239,7 +1238,7 @@ static inline int MPIDI_OFI_do_get_accumulate(const void *origin_addr,
                                    req->noncontig->result_dt.map, req->noncontig->target_dt.map);
 
     msg.desc = NULL;
-    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank, MPIDI_OFI_API_RMA);
+    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, req->target_rank);
     msg.context = NULL;
     msg.data = 0;
     msg.datatype = fi_dt;

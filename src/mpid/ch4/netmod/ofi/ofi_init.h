@@ -196,6 +196,41 @@ cvars:
         tag. The default value is -1, indicating that no value is set and that
         the default will be defined in the ofi_types.h file.
 
+    - name        : MPIR_CVAR_CH4_OFI_MAJOR_VERSION
+      category    : CH4_OFI
+      type        : int
+      default     : -1
+      class       : device
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_LOCAL
+      description : >-
+        Specifies the major version of the OFI library. The default is the
+        major version of the OFI library used with MPICH. If using this CVAR,
+        it is recommeded that the user also specifies a specific OFI provider.
+
+    - name        : MPIR_CVAR_CH4_OFI_MINOR_VERSION
+      category    : CH4_OFI
+      type        : int
+      default     : -1
+      class       : device
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_LOCAL
+      description : >-
+        Specifies the major version of the OFI library. The default is the
+        minor version of the OFI library used with MPICH. If using this CVAR,
+        it is recommeded that the user also specifies a specific OFI provider.
+
+    - name        : MPIR_CVAR_CH4_OFI_MAX_VNIS
+      category    : CH4_OFI
+      type        : int
+      default     : -1
+      class       : device
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_LOCAL
+      description : >-
+        If set to positive, this CVAR specifies the maximum number of CH4 VNIs
+        that OFI netmod exposes.
+
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 
@@ -291,7 +326,7 @@ static inline int MPIDI_OFI_conn_manager_destroy()
                 conn[j] = MPIDI_Global.conn_mgr.conn_list[i].dest;
                 req[j].done = 0;
                 req[j].event_id = MPIDI_OFI_EVENT_DYNPROC_DONE;
-                MPIDI_OFI_CALL_RETRY(fi_trecv(MPIDI_OFI_EP_RX_TAG(0),
+                MPIDI_OFI_CALL_RETRY(fi_trecv(MPIDI_Global.ctx[0].rx,
                                               &close_msg[j],
                                               sizeof(int),
                                               NULL,
@@ -356,7 +391,17 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_NETMOD_OFI_INIT);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_NETMOD_OFI_INIT);
 
-    MPIDI_OFI_init_global_settings(MPIR_CVAR_OFI_USE_PROVIDER);
+    if (!MPIDI_OFI_ENABLE_RUNTIME_CHECKS) {
+        MPIDI_OFI_init_global_settings(MPIR_CVAR_OFI_USE_PROVIDER);
+    } else {
+        /* when runtime checks are enabled, and no provider name is set, then
+         * try to select the fastest provider which fit minimal requirements.
+         * to do this use "unknown" fake provider name to force initialization
+         * of global settings by default minimal values. We are assuming
+         * that libfabric returns available provider list sorted by performance
+         * (faster - first) */
+        MPIDI_OFI_init_global_settings(MPIR_CVAR_OFI_USE_PROVIDER ? MPIR_CVAR_OFI_USE_PROVIDER : "unknown");
+    }
 
     CH4_COMPILE_TIME_ASSERT(offsetof(struct MPIR_Request, dev.ch4.netmod) ==
                             offsetof(MPIDI_OFI_chunk_request, context));
@@ -376,8 +421,6 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     CH4_COMPILE_TIME_ASSERT(sizeof(MPIR_Request) >= sizeof(MPIDI_OFI_win_request_t));
     CH4_COMPILE_TIME_ASSERT(sizeof(MPIR_Context_id_t) * 8 >= MPIDI_OFI_AM_CONTEXT_ID_BITS);
 
-    *tag_ub = (1ULL << MPIDI_OFI_TAG_BITS) - 1;
-
     MPID_Thread_mutex_create(&MPIDI_OFI_THREAD_UTIL_MUTEX, &thr_err);
     MPID_Thread_mutex_create(&MPIDI_OFI_THREAD_PROGRESS_MUTEX, &thr_err);
     MPID_Thread_mutex_create(&MPIDI_OFI_THREAD_FI_MUTEX, &thr_err);
@@ -395,7 +438,10 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     /* Specify the version of OFI is coded to, the provider will select struct  */
     /* layouts that are compatible with this version.                           */
     /* ------------------------------------------------------------------------ */
-    fi_version = FI_VERSION(MPIDI_OFI_MAJOR_VERSION, MPIDI_OFI_MINOR_VERSION);
+    if (MPIDI_OFI_MAJOR_VERSION != -1 && MPIDI_OFI_MINOR_VERSION != -1)
+        fi_version = FI_VERSION(MPIDI_OFI_MAJOR_VERSION, MPIDI_OFI_MINOR_VERSION);
+    else
+        fi_version = FI_VERSION(FI_MAJOR_VERSION, FI_MINOR_VERSION);
 
     MPIDI_OFI_init_hints(hints);
 
@@ -424,6 +470,10 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
                 prov = prov_use->next;
                 continue;
             }
+
+            /* set global settings according to evaluated provider */
+            if(!MPIR_CVAR_OFI_USE_PROVIDER)
+                MPIDI_OFI_init_global_settings(prov_use->fabric_attr->prov_name);
 
             /* Check that this provider meets the minimum requirements for the user */
             if (MPIDI_OFI_ENABLE_DATA && ((0ULL == (prov_use->caps & FI_DIRECTED_RECV)) || (prov_use->domain_attr->cq_data_size < 4))) {
@@ -470,6 +520,11 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
              * logic again and make sure to pick this provider again with the
              * hints included this time. */
             hints->caps = prov_use->caps;
+            if(!MPIR_CVAR_OFI_USE_PROVIDER) {
+                /* set provider name to hints to make more accurate selection */
+                provname = MPL_strdup(prov_use->fabric_attr->prov_name);
+                hints->fabric_attr->prov_name = provname;
+            }
             break;
         }
 
@@ -485,6 +540,11 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
                  * logic again and make sure to pick this provider again with the
                  * hints included this time. */
                 hints->caps = prov_use->caps;
+                if(!MPIR_CVAR_OFI_USE_PROVIDER) {
+                    /* set provider name to hints to make more accurate selection */
+                    provname = MPL_strdup(prov_use->fabric_attr->prov_name);
+                    hints->fabric_attr->prov_name = provname;
+                }
             }
             if (prov)
                 fi_freeinfo(prov);
@@ -498,6 +558,7 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     MPIDI_OFI_CALL(fi_getinfo(fi_version, NULL, NULL, 0ULL, hints, &prov), addrinfo);
     MPIDI_OFI_CHOOSE_PROVIDER(prov, &prov_use, "No suitable provider provider found");
 
+    *tag_ub = (1ULL << MPIDI_OFI_TAG_BITS) - 1;
 
     if (MPIDI_OFI_ENABLE_RUNTIME_CHECKS) {
         /* ------------------------------------------------------------------------ */
@@ -708,8 +769,6 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         }
     }
 
-    *n_vnis_provided = 1;
-
     /* ------------------------------------------------------------------------ */
     /* Create a transport level communication endpoint.  To use the endpoint,   */
     /* it must be bound to completion counters or event queues and enabled,     */
@@ -717,27 +776,36 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     /* completion queues, etc.                                                  */
     /* ------------------------------------------------------------------------ */
 
+    MPIDI_Global.max_ch4_vnis = 1;
     if (MPIDI_OFI_ENABLE_SCALABLE_ENDPOINTS) {
-        /* Specify the number of TX/RX contexts we want
-
-           Currently, scalable endpoint contexts are created in a "bundle",
-           where each bundle consists of four TX contexts
-           (tagged, msg(untagged), rma-counter, rma-completion)
-           and three RX contexts (tagged, msg, rma.) */
-
-        int n_bundles = 1; /* Tentatively, we are creating only one bundle */
-        prov_use->ep_attr->tx_ctx_cnt = 4 * n_bundles;
-        prov_use->ep_attr->rx_ctx_cnt = 3 * n_bundles;
+        MPIDI_Global.max_ch4_vnis = prov_use->domain_attr->tx_ctx_cnt;
+        if (MPIR_CVAR_CH4_OFI_MAX_VNIS > 0 && MPIDI_Global.max_ch4_vnis > MPIR_CVAR_CH4_OFI_MAX_VNIS)
+            MPIDI_Global.max_ch4_vnis = MPIR_CVAR_CH4_OFI_MAX_VNIS;
+        if (MPIDI_Global.max_ch4_vnis < 1) {
+            MPIR_ERR_SETFATALANDJUMP4(mpi_errno,
+                                      MPI_ERR_OTHER,
+                                      "**ofid_ep",
+                                      "**ofid_ep %s %d %s %s",
+                                      __SHORT_FILE__, __LINE__, FCNAME, "Not enough scalable endpoints");
+        }
+        /* Specify the number of TX/RX contexts we want */
+        prov_use->ep_attr->tx_ctx_cnt = MPIDI_Global.max_ch4_vnis;
+        prov_use->ep_attr->rx_ctx_cnt = MPIDI_Global.max_ch4_vnis;
     }
-    MPIDI_OFI_MPI_CALL_POP(MPIDI_OFI_create_endpoint(prov_use,
-                                                     MPIDI_Global.domain,
-                                                     MPIDI_Global.p2p_cq,
-                                                     MPIDI_Global.rma_cmpl_cntr,
-                                                     MPIDI_Global.av,
-                                                     &MPIDI_Global.ep, 0));
+
+    for (i = 0; i < MPIDI_Global.max_ch4_vnis; i++) {
+        MPIDI_OFI_MPI_CALL_POP(MPIDI_OFI_create_endpoint(prov_use,
+                                                         MPIDI_Global.domain,
+                                                         MPIDI_Global.p2p_cq,
+                                                         MPIDI_Global.rma_cmpl_cntr,
+                                                         MPIDI_Global.av,
+                                                         &MPIDI_Global.ep, i));
+    }
+
+    *n_vnis_provided = MPIDI_Global.max_ch4_vnis;
 
     if (do_av_insert) {
-        int local_rank, num_local = 0, local_rank_0 = -1;
+        int local_rank = -1, num_local = 0, local_rank_0 = -1;
         MPIDU_shm_seg_t memory;
         MPIDU_shm_barrier_t *barrier;
         int start, end;
@@ -770,8 +838,10 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Commit(MPIDI_Global.kvsname), pmi);
 #endif
 
+        MPIDI_av_entry_t *av = NULL;
         for (i = 0; i < size; i++) {
-            if (MPIDI_CH4_rank_is_local(i, MPIR_Process.comm_world)) {
+            av = MPIDIU_comm_rank_to_av(MPIR_Process.comm_world, i);
+            if (MPIDI_av_is_local(av)) {
                 if (i == rank)
                     local_rank = num_local;
 
@@ -781,6 +851,7 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
                 num_local++;
             }
         }
+        if (0 == num_local) MPIR_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**ch4|ch4_init");
 
         MPIDU_shm_seg_alloc(size * MPIDI_Global.addrnamelen, (void **)&table);
         MPIDU_shm_seg_commit(&memory, &barrier, num_local, local_rank, local_rank_0, rank);
@@ -860,7 +931,7 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         MPIDI_Global.cq_buff_head = MPIDI_Global.cq_buff_tail = 0;
         optlen = MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE;
 
-        MPIDI_OFI_CALL(fi_setopt(&(MPIDI_OFI_EP_RX_MSG(0)->fid),
+        MPIDI_OFI_CALL(fi_setopt(&(MPIDI_Global.ctx[0].rx->fid),
                                  FI_OPT_ENDPOINT,
                                  FI_OPT_MIN_MULTI_RECV, &optlen, sizeof(optlen)), setopt);
 
@@ -876,7 +947,7 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
             MPIDI_Global.am_msg[i].addr = FI_ADDR_UNSPEC;
             MPIDI_Global.am_msg[i].context = &MPIDI_Global.am_reqs[i].context;
             MPIDI_Global.am_msg[i].iov_count = 1;
-            MPIDI_OFI_CALL_RETRY(fi_recvmsg(MPIDI_OFI_EP_RX_MSG(0),
+            MPIDI_OFI_CALL_RETRY(fi_recvmsg(MPIDI_Global.ctx[0].rx,
                                             &MPIDI_Global.am_msg[i],
                                             FI_MULTI_RECV | FI_COMPLETION), prepost,
                                  MPIDI_OFI_CALL_LOCK);
@@ -892,6 +963,11 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
 
     MPIR_Datatype_init_names();
     MPIDI_OFI_index_datatypes();
+
+#ifndef HAVE_DEBUGGER_SUPPORT
+    MPIDI_Global.lw_send_req = MPIR_Request_create(MPIR_REQUEST_KIND__SEND);
+    MPIR_cc_set(&MPIDI_Global.lw_send_req->cc, 0);
+#endif
 
     /* -------------------------------- */
     /* Initialize Dynamic Tasking       */
@@ -959,18 +1035,11 @@ static inline int MPIDI_NM_mpi_finalize_hook(void)
     MPIR_Assert(OPA_load_int(&MPIDI_Global.am_inflight_inject_emus) == 0);
 
     if (MPIDI_OFI_ENABLE_SCALABLE_ENDPOINTS) {
-        if (MPIDI_OFI_ENABLE_TAGGED)
-            MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_TX_TAG(0)), epclose);
-
-        MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_TX_RMA(0)), epclose);
-        MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_TX_MSG(0)), epclose);
-        MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_TX_CTR(0)), epclose);
-
-        if (MPIDI_OFI_ENABLE_TAGGED)
-            MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_RX_TAG(0)), epclose);
-
-        MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_RX_RMA(0)), epclose);
-        MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_OFI_EP_RX_MSG(0)), epclose);
+        for (i = 0; i < MPIDI_Global.max_ch4_vnis; i++) {
+            MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_Global.ctx[i].tx), epclose);
+            MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_Global.ctx[i].rx), epclose);
+            MPIDI_OFI_CALL(fi_close((fid_t) MPIDI_Global.ctx[i].cq), cqclose);
+        }
     }
 
     if (MPIDI_OFI_ENABLE_STX_RMA && MPIDI_Global.stx_ctx != NULL)
@@ -1016,6 +1085,10 @@ static inline int MPIDI_NM_mpi_finalize_hook(void)
     MPID_Thread_mutex_destroy(&MPIDI_OFI_THREAD_PROGRESS_MUTEX, &thr_err);
     MPID_Thread_mutex_destroy(&MPIDI_OFI_THREAD_FI_MUTEX, &thr_err);
     MPID_Thread_mutex_destroy(&MPIDI_OFI_THREAD_SPAWN_MUTEX, &thr_err);
+
+#ifndef HAVE_DEBUGGER_SUPPORT
+    MPIR_Request_free(MPIDI_Global.lw_send_req);
+#endif
 
   fn_exit:
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_NETMOD_OFI_FINALIZE);
@@ -1212,113 +1285,61 @@ static inline int MPIDI_OFI_create_endpoint(struct fi_info *prov_use,
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_NETMOD_OFI_CREATE_ENDPOINT);
 
     if (MPIDI_OFI_ENABLE_SCALABLE_ENDPOINTS) {
-        int idx_off;
-        MPIDI_OFI_CALL(fi_scalable_ep(domain, prov_use, ep, NULL), ep);
-        MPIDI_OFI_CALL(fi_scalable_ep_bind(*ep, &av->fid, 0), bind);
+        struct fi_cq_attr cq_attr;
 
-        idx_off = index * 4;
-        MPIDI_Global.ctx[index].ctx_offset = idx_off;
-
-        if (MPIDI_OFI_ENABLE_TAGGED) {
-            tx_attr = *prov_use->tx_attr;
-            tx_attr.caps = FI_TAGGED | FI_SEND;
-            tx_attr.op_flags = FI_COMPLETION | FI_INJECT_COMPLETE;
-            MPIDI_OFI_CALL(fi_tx_context(*ep, idx_off, &tx_attr, &MPIDI_OFI_EP_TX_TAG(index), NULL),
-                           ep);
-            MPIDI_OFI_CALL(fi_ep_bind
-                           (MPIDI_OFI_EP_TX_TAG(index), &p2p_cq->fid,
-                            FI_SEND | FI_SELECTIVE_COMPLETION), bind);
+        if (*ep == NULL) {
+            /* First call to this function -- set up scalable endpoint */
+            MPIDI_OFI_CALL(fi_scalable_ep(domain, prov_use, ep, NULL), ep);
+            MPIDI_OFI_CALL(fi_scalable_ep_bind(*ep, &av->fid, 0), bind);
         }
 
+        memset(&cq_attr, 0, sizeof(cq_attr));
+        cq_attr.format = FI_CQ_FORMAT_TAGGED;
+        MPIDI_OFI_CALL(fi_cq_open(MPIDI_Global.domain,
+                                  &cq_attr,
+                                  &MPIDI_Global.ctx[index].cq,
+                                  NULL), opencq);
+
         tx_attr = *prov_use->tx_attr;
-        tx_attr.caps = FI_RMA | FI_WRITE | FI_READ;
-        tx_attr.caps |= FI_ATOMICS;
         tx_attr.op_flags = FI_COMPLETION | FI_DELIVERY_COMPLETE;
-        MPIDI_OFI_CALL(fi_tx_context(*ep, idx_off + 1, &tx_attr, &MPIDI_OFI_EP_TX_RMA(index), NULL),
-                       ep);
-        MPIDI_OFI_CALL(fi_ep_bind(MPIDI_OFI_EP_TX_RMA(index), &rma_ctr->fid, FI_WRITE | FI_READ),
-                       bind);
-        MPIDI_OFI_CALL(fi_ep_bind
-                       (MPIDI_OFI_EP_TX_RMA(index), &p2p_cq->fid,
-                        FI_SEND | FI_SELECTIVE_COMPLETION), bind);
+        tx_attr.caps = 0;
 
-        tx_attr = *prov_use->tx_attr;
-        tx_attr.caps = FI_MSG|FI_SEND;
-        tx_attr.op_flags = FI_COMPLETION | FI_INJECT_COMPLETE;
-        MPIDI_OFI_CALL(fi_tx_context(*ep, idx_off + 2, &tx_attr, &MPIDI_OFI_EP_TX_MSG(index), NULL),
-                       ep);
-        MPIDI_OFI_CALL(fi_ep_bind
-                       (MPIDI_OFI_EP_TX_MSG(index), &p2p_cq->fid,
-                        FI_SEND | FI_SELECTIVE_COMPLETION), bind);
+        if (MPIDI_OFI_ENABLE_TAGGED)
+            tx_attr.caps = FI_TAGGED | FI_SEND;
 
-        tx_attr = *prov_use->tx_attr;
-        tx_attr.caps = FI_RMA | FI_WRITE | FI_READ;
+        /* RMA */
+        tx_attr.caps |= FI_RMA | FI_WRITE | FI_READ;
         tx_attr.caps |= FI_ATOMICS;
-        tx_attr.op_flags = FI_DELIVERY_COMPLETE;
-        MPIDI_OFI_CALL(fi_tx_context(*ep, idx_off + 3, &tx_attr, &MPIDI_OFI_EP_TX_CTR(index), NULL),
-                       ep);
-        MPIDI_OFI_CALL(fi_ep_bind(MPIDI_OFI_EP_TX_CTR(index), &rma_ctr->fid, FI_WRITE | FI_READ),
+        /* MSG */
+        tx_attr.caps |= FI_MSG | FI_SEND;
+
+        MPIDI_OFI_CALL(fi_tx_context(*ep, index, &tx_attr, &MPIDI_Global.ctx[index].tx, NULL), ep);
+        MPIDI_OFI_CALL(fi_ep_bind(MPIDI_Global.ctx[index].tx,
+                                  &MPIDI_Global.ctx[index].cq->fid,
+                                  FI_SEND | FI_SELECTIVE_COMPLETION), bind);
+        MPIDI_OFI_CALL(fi_ep_bind(MPIDI_Global.ctx[index].tx, &rma_ctr->fid, FI_WRITE | FI_READ),
                        bind);
-        /* We need to bind to the CQ if the progress mode is manual.
-         * Otherwise fi_cq_read would not make progress on this context and potentially leads to a deadlock. */
-        if (!MPIDI_OFI_ENABLE_DATA_AUTO_PROGRESS)
-            MPIDI_OFI_CALL(fi_ep_bind
-                           (MPIDI_OFI_EP_TX_CTR(index), &p2p_cq->fid,
-                            FI_SEND | FI_SELECTIVE_COMPLETION), bind);
-
-        if (MPIDI_OFI_ENABLE_TAGGED) {
-            rx_attr = *prov_use->rx_attr;
-            rx_attr.caps = FI_TAGGED | FI_RECV;
-
-            if (MPIDI_OFI_ENABLE_DATA)
-                rx_attr.caps |= FI_DIRECTED_RECV;
-
-            rx_attr.op_flags = 0;
-            MPIDI_OFI_CALL(fi_rx_context(*ep, idx_off, &rx_attr, &MPIDI_OFI_EP_RX_TAG(index), NULL),
-                           ep);
-            MPIDI_OFI_CALL(fi_ep_bind(MPIDI_OFI_EP_RX_TAG(index), &p2p_cq->fid, FI_RECV), bind);
-        }
 
         rx_attr = *prov_use->rx_attr;
-        rx_attr.caps = FI_RMA | FI_REMOTE_READ | FI_REMOTE_WRITE;
-        rx_attr.caps |= FI_ATOMICS;
-        rx_attr.op_flags = 0;
-        MPIDI_OFI_CALL(fi_rx_context(*ep, idx_off + 1, &rx_attr, &MPIDI_OFI_EP_RX_RMA(index), NULL),
-                       ep);
+        rx_attr.caps = 0;
 
-        /* Note:  This bind should cause the "passive target" rx context to never generate an event
-         * We need this bind for manual progress to ensure that progress is made on the
-         * rx_ctr or rma operations during completion queue reads */
-        if (!MPIDI_OFI_ENABLE_DATA_AUTO_PROGRESS)
-            MPIDI_OFI_CALL(fi_ep_bind(MPIDI_OFI_EP_RX_RMA(index), &p2p_cq->fid,
-                                      FI_SEND | FI_RECV | FI_SELECTIVE_COMPLETION), bind);
-
-        rx_attr = *prov_use->rx_attr;
-        rx_attr.caps = FI_MSG | FI_RECV;
-        rx_attr.caps |= FI_MULTI_RECV;
-
+        if (MPIDI_OFI_ENABLE_TAGGED)
+            rx_attr.caps |= FI_TAGGED | FI_RECV;
         if (MPIDI_OFI_ENABLE_DATA)
             rx_attr.caps |= FI_DIRECTED_RECV;
 
-        rx_attr.op_flags = FI_MULTI_RECV;
-        MPIDI_OFI_CALL(fi_rx_context(*ep, idx_off + 2, &rx_attr, &MPIDI_OFI_EP_RX_MSG(index), NULL),
-                       ep);
-        MPIDI_OFI_CALL(fi_ep_bind(MPIDI_OFI_EP_RX_MSG(index), &p2p_cq->fid, FI_RECV), bind);
+        rx_attr.caps |= FI_RMA | FI_REMOTE_READ | FI_REMOTE_WRITE;
+        rx_attr.caps |= FI_ATOMICS;
+        rx_attr.caps |= FI_MSG | FI_RECV;
+        rx_attr.caps |= FI_MULTI_RECV;
+
+        MPIDI_OFI_CALL(fi_rx_context(*ep, index, &rx_attr, &MPIDI_Global.ctx[index].rx, NULL), ep);
+        MPIDI_OFI_CALL(fi_ep_bind(MPIDI_Global.ctx[index].rx, &MPIDI_Global.ctx[index].cq->fid, FI_RECV), bind);
 
         MPIDI_OFI_CALL(fi_enable(*ep), ep_enable);
 
-        if (MPIDI_OFI_ENABLE_TAGGED)
-            MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_TX_TAG(index)), ep_enable);
-
-        MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_TX_RMA(index)), ep_enable);
-        MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_TX_MSG(index)), ep_enable);
-        MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_TX_CTR(index)), ep_enable);
-
-        if (MPIDI_OFI_ENABLE_TAGGED)
-            MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_RX_TAG(index)), ep_enable);
-
-        MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_RX_RMA(index)), ep_enable);
-        MPIDI_OFI_CALL(fi_enable(MPIDI_OFI_EP_RX_MSG(index)), ep_enable);
+        MPIDI_OFI_CALL(fi_enable(MPIDI_Global.ctx[index].tx), ep_enable);
+        MPIDI_OFI_CALL(fi_enable(MPIDI_Global.ctx[index].rx), ep_enable);
     }
     else {
         /* ---------------------------------------------------------- */
@@ -1334,13 +1355,8 @@ static inline int MPIDI_OFI_create_endpoint(struct fi_info *prov_use,
 
         /* Copy the normal ep into the first entry for scalable endpoints to
          * allow compile macros to work */
-        MPIDI_Global.ctx[0].tx_tag =
-            MPIDI_Global.ctx[0].tx_rma =
-            MPIDI_Global.ctx[0].tx_msg =
-            MPIDI_Global.ctx[0].tx_ctr =
-            MPIDI_Global.ctx[0].rx_tag =
-            MPIDI_Global.ctx[0].rx_rma =
-            MPIDI_Global.ctx[0].rx_msg = *ep;
+        MPIDI_Global.ctx[0].tx = MPIDI_Global.ctx[0].rx = *ep;
+        MPIDI_Global.ctx[0].cq = p2p_cq;
     }
 
   fn_exit:
@@ -1465,6 +1481,10 @@ static inline int MPIDI_OFI_init_global_settings(char *prov_name)
                                                         prov_name ? MPIDI_OFI_caps_list[MPIDI_OFI_get_set_number(prov_name)].source_bits : MPIR_CVAR_CH4_OFI_RANK_BITS;
     MPIDI_Global.settings.tag_bits                  = MPIR_CVAR_CH4_OFI_TAG_BITS != 20 ? MPIR_CVAR_CH4_OFI_TAG_BITS :
                                                         prov_name ? MPIDI_OFI_caps_list[MPIDI_OFI_get_set_number(prov_name)].tag_bits : MPIR_CVAR_CH4_OFI_TAG_BITS;
+    MPIDI_Global.settings.major_version             = MPIR_CVAR_CH4_OFI_MAJOR_VERSION != FI_MAJOR_VERSION ? MPIR_CVAR_CH4_OFI_MAJOR_VERSION :
+                                                        prov_name ? MPIDI_OFI_caps_list[MPIDI_OFI_get_set_number(prov_name)].major_version : MPIR_CVAR_CH4_OFI_MAJOR_VERSION;
+    MPIDI_Global.settings.minor_version             = MPIR_CVAR_CH4_OFI_MINOR_VERSION != FI_MINOR_VERSION ? MPIR_CVAR_CH4_OFI_MINOR_VERSION :
+                                                        prov_name ? MPIDI_OFI_caps_list[MPIDI_OFI_get_set_number(prov_name)].minor_version : MPIR_CVAR_CH4_OFI_MINOR_VERSION;
     return MPI_SUCCESS;
 }
 
@@ -1477,7 +1497,7 @@ static inline int MPIDI_OFI_init_hints(struct fi_info *hints)
     /* See man fi_getinfo for a list                                            */
     /* of all filters                                                           */
     /* mode:  Select capabilities that this netmod will support                 */
-    /*        FI_CONTEXT:  This netmod will pass in context into communication  */
+    /*        FI_CONTEXT(2):  This netmod will pass in context into communication */
     /*        to optimize storage locality between MPI requests and OFI opaque  */
     /*        data structures.                                                  */
     /*        FI_ASYNC_IOV:  MPICH will provide storage for iovecs on           */
@@ -1497,7 +1517,12 @@ static inline int MPIDI_OFI_init_hints(struct fi_info *hints)
     /*           We expect to register all memory up front for use with this    */
     /*           endpoint, so the netmod requires dynamic memory regions        */
     /* ------------------------------------------------------------------------ */
-    hints->mode = FI_CONTEXT | FI_ASYNC_IOV;    /* We can handle contexts  */
+    hints->mode = FI_CONTEXT | FI_ASYNC_IOV | FI_RX_CQ_DATA; /* We can handle contexts  */
+    if (FI_VERSION(MPIDI_OFI_MAJOR_VERSION, MPIDI_OFI_MINOR_VERSION) >= FI_VERSION(1,5)) {
+#ifdef FI_CONTEXT2
+        hints->mode |= FI_CONTEXT2;
+#endif
+    }
     hints->caps = 0ULL;
 
     /* RMA interface is used in AM and in native modes,
@@ -1566,6 +1591,11 @@ static inline int MPIDI_OFI_init_hints(struct fi_info *hints)
         hints->domain_attr->mr_mode = FI_MR_SCALABLE;
     else
         hints->domain_attr->mr_mode = FI_MR_BASIC;
+    if (FI_VERSION(MPIDI_OFI_MAJOR_VERSION, MPIDI_OFI_MINOR_VERSION) >= FI_VERSION(1,5)) {
+#ifdef FI_RESTRICTED_COMP
+        hints->domain_attr->mode = FI_RESTRICTED_COMP;
+#endif
+    }
     hints->tx_attr->op_flags = FI_COMPLETION;
     /* direct RMA operations supported only with delivery complete mode,
      * else (AM mode) delivery complete is not required */

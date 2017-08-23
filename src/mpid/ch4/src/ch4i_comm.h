@@ -15,17 +15,19 @@
 #define FCNAME MPL_QUOTE(FUNCNAME)
 static inline int MPIDI_map_size(MPIR_Comm_map_t map)
 {
+    int ret = 0;
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_MAP_SIZE);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_MAP_SIZE);
 
     if (map.type == MPIR_COMM_MAP_TYPE__IRREGULAR)
-        return map.src_mapping_size;
+        ret = map.src_mapping_size;
     else if (map.dir == MPIR_COMM_MAP_DIR__L2L || map.dir == MPIR_COMM_MAP_DIR__L2R)
-        return map.src_comm->local_size;
+        ret = map.src_comm->local_size;
     else
-        return map.src_comm->remote_size;
+        ret = map.src_comm->remote_size;
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_MAP_SIZE);
+    return ret;
 }
 
 /*
@@ -47,6 +49,7 @@ static inline int MPIDI_detect_regular_model(int *lpid, int size,
 {
     int off = 0, bs = 0, st = 0;
     int i;
+    int ret = MPIDI_SRC_MAPPER_IRREGULAR;
 
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_DETECT_REGULAR_MODEL);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_DETECT_REGULAR_MODEL);
@@ -65,31 +68,37 @@ static inline int MPIDI_detect_regular_model(int *lpid, int size,
                     (MPL_DBG_FDEST, "\tdetect model: blocksize %d", bs));
     if (bs == size) {
         if (off == 0) {
-            return MPIDI_SRC_MAPPER_DIRECT;
+            ret = MPIDI_SRC_MAPPER_DIRECT;
+            goto fn_exit;
         }
         else {
             *offset = off;
-            return MPIDI_SRC_MAPPER_OFFSET;
+            ret = MPIDI_SRC_MAPPER_OFFSET;
+            goto fn_exit;
         }
     }
 
     /* blocksize less than total size, try if this is stride */
     st = lpid[bs] - lpid[0];
     if (st < 0 || st <= bs) {
-        return MPIDI_SRC_MAPPER_IRREGULAR;
+        ret = MPIDI_SRC_MAPPER_IRREGULAR;
+        goto fn_exit;
     }
     MPL_DBG_MSG_FMT(MPIDI_CH4_DBG_MAP, VERBOSE, (MPL_DBG_FDEST, "\tdetect model: stride %d", st));
     for (i = bs; i < size; i++) {
         if (lpid[i] != MPIDI_CALC_STRIDE(i, st, bs, off)) {
-            return MPIDI_SRC_MAPPER_IRREGULAR;
+            ret = MPIDI_SRC_MAPPER_IRREGULAR;
+            goto fn_exit;
         }
     }
     *offset = off;
     *blocksize = bs;
     *stride = st;
+    ret = MPIDI_SRC_MAPPER_STRIDE;
 
+  fn_exit:
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_DETECT_REGULAR_MODEL);
-    return MPIDI_SRC_MAPPER_STRIDE;
+    return ret;
 }
 
 #undef FUNCNAME
@@ -1047,6 +1056,22 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_comm_create_rank_map(MPIR_Comm * comm)
     if (comm->comm_kind == MPIR_COMM_KIND__INTRACOMM) {
         MPIDI_COMM(comm, local_map).mode = MPIDI_RANK_MAP_NONE;
     }
+
+#ifdef MPL_USE_DBG_LOGGING
+    int rank_;
+    int avtid_, lpid_;
+    if (comm->remote_size < 16) {
+        for (rank_ = 0; rank_ < comm->remote_size; ++rank_) {
+            MPIDIU_comm_rank_to_pid(comm, rank_, &lpid_, &avtid_);
+            MPIDIU_comm_rank_to_av(comm, rank_);
+        }
+    }
+    if (comm->comm_kind == MPIR_COMM_KIND__INTERCOMM && comm->local_size < 16) {
+        for (rank_ = 0; rank_ < comm->local_size; ++rank_) {
+            MPIDIU_comm_rank_to_pid_local(comm, rank_, &lpid_, &avtid_);
+        }
+    }
+#endif
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_COMM_CREATE_RANK_MAP);
     return mpi_errno;

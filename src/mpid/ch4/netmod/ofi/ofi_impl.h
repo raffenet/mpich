@@ -23,7 +23,7 @@
 #define MPIDI_OFI_COMM(comm)     ((comm)->dev.ch4.netmod.ofi)
 #define MPIDI_OFI_COMM_TO_INDEX(comm,rank) \
     MPIDIU_comm_rank_to_pid(comm, rank, NULL, NULL)
-#define MPIDI_OFI_AV_TO_PHYS(av) ((av)->dest)
+#define MPIDI_OFI_AV_TO_PHYS(av) (MPIDI_OFI_AV(av).dest)
 #define MPIDI_OFI_COMM_TO_PHYS(comm,rank)                       \
     MPIDI_OFI_AV(MPIDIU_comm_rank_to_av((comm), (rank))).dest
 #define MPIDI_OFI_TO_PHYS(avtid, lpid)                                 \
@@ -215,11 +215,19 @@
         MPIR_Request_add_ref((req));                                \
     } while (0)
 
+#ifndef HAVE_DEBUGGER_SUPPORT
+#define MPIDI_OFI_SEND_REQUEST_CREATE_LW(req)                   \
+    do {                                                                \
+        (req) = MPIDI_Global.lw_send_req;                               \
+        MPIR_Request_add_ref((req));                                    \
+    } while (0)
+#else
 #define MPIDI_OFI_SEND_REQUEST_CREATE_LW(req)                   \
     do {                                                                \
         (req) = MPIR_Request_create(MPIR_REQUEST_KIND__SEND);           \
         MPIR_cc_set(&(req)->cc, 0);                                     \
     } while (0)
+#endif
 
 #define MPIDI_OFI_SSEND_ACKREQUEST_CREATE(req)            \
     do {                                                          \
@@ -255,7 +263,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_cntr_incr()
 }
 
 /* Externs:  see util.c for definition */
-int MPIDI_OFI_handle_cq_error_util(ssize_t ret);
+int MPIDI_OFI_handle_cq_error_util(int ep_idx, ssize_t ret);
 int MPIDI_OFI_progress_test_no_inline(void);
 int MPIDI_OFI_control_handler(int handler_id, void *am_hdr,
                               void **data, size_t * data_sz, int *is_contig,
@@ -307,25 +315,34 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_win_request_complete(MPIDI_OFI_win_reque
     }
 }
 
-MPL_STATIC_INLINE_PREFIX fi_addr_t MPIDI_OFI_comm_to_phys(MPIR_Comm * comm, int rank, int ep_family)
+MPL_STATIC_INLINE_PREFIX fi_addr_t MPIDI_OFI_comm_to_phys(MPIR_Comm * comm, int rank)
 {
     if (MPIDI_OFI_ENABLE_SCALABLE_ENDPOINTS) {
         MPIDI_OFI_addr_t *av = &MPIDI_OFI_AV(MPIDIU_comm_rank_to_av(comm, rank));
         int ep_num = MPIDI_OFI_av_to_ep(av);
-        int offset = MPIDI_Global.ctx[ep_num].ctx_offset;
-        int rx_idx = offset + ep_family;
-        return fi_rx_addr(MPIDI_OFI_AV_TO_PHYS(av), rx_idx, MPIDI_OFI_MAX_ENDPOINTS_BITS);
+        int rx_idx = ep_num;
+        return fi_rx_addr(av->dest, rx_idx, MPIDI_OFI_MAX_ENDPOINTS_BITS);
     } else {
         return MPIDI_OFI_COMM_TO_PHYS(comm, rank);
     }
 }
 
-MPL_STATIC_INLINE_PREFIX fi_addr_t MPIDI_OFI_to_phys(int rank, int ep_family)
+MPL_STATIC_INLINE_PREFIX fi_addr_t MPIDI_OFI_av_to_phys(MPIDI_av_entry_t *av)
+{
+    if (MPIDI_OFI_ENABLE_SCALABLE_ENDPOINTS) {
+        int ep_num = MPIDI_OFI_av_to_ep(&MPIDI_OFI_AV(av));
+        return fi_rx_addr(MPIDI_OFI_AV_TO_PHYS(av), ep_num, MPIDI_OFI_MAX_ENDPOINTS_BITS);
+    }
+    else {
+        return MPIDI_OFI_AV_TO_PHYS(av);
+    }
+}
+
+MPL_STATIC_INLINE_PREFIX fi_addr_t MPIDI_OFI_to_phys(int rank)
 {
     if (MPIDI_OFI_ENABLE_SCALABLE_ENDPOINTS) {
         int ep_num = 0;
-        int offset = MPIDI_Global.ctx[ep_num].ctx_offset;
-        int rx_idx = offset + ep_family;
+        int rx_idx = ep_num;
         return fi_rx_addr(MPIDI_OFI_TO_PHYS(0, rank), rx_idx, MPIDI_OFI_MAX_ENDPOINTS_BITS);
     } else {
         return MPIDI_OFI_TO_PHYS(0, rank);
@@ -533,7 +550,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_dynproc_send_disconnect(int conn_id)
         msg.ignore = context_id;
         msg.context = (void *) &req.context;
         msg.data = 0;
-        MPIDI_OFI_CALL_RETRY(fi_tsendmsg(MPIDI_OFI_EP_TX_TAG(0), &msg,
+        MPIDI_OFI_CALL_RETRY(fi_tsendmsg(MPIDI_Global.ctx[0].tx, &msg,
                                          FI_COMPLETION | FI_TRANSMIT_COMPLETE | (MPIDI_OFI_ENABLE_DATA ? FI_REMOTE_CQ_DATA : 0)),
                              tsendmsg, MPIDI_OFI_CALL_LOCK);
         MPIDI_OFI_PROGRESS_WHILE(!req.done);
