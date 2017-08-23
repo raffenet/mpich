@@ -172,10 +172,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Bcast_composition_alpha(void *buffer, int cou
     int mpi_errno = MPI_SUCCESS;
     void * bcast_roots_container = MPIDI_coll_get_next_container(ch4_algo_parameters_container);
     void * bcast_node_container = MPIDI_coll_get_next_container(bcast_roots_container);
-    int type_size, nbytes;
-
-    MPIR_Datatype_get_size_macro(datatype, type_size);
-    nbytes = MPIR_CVAR_MAX_SMP_REDUCE_MSG_SIZE ? type_size*count : 0;
 
     if (comm->node_roots_comm == NULL && comm->rank == root) {
         mpi_errno = MPIC_Send(buffer, count, datatype, 0, MPIR_BCAST_TAG, comm->node_comm, errflag);

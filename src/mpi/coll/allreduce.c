@@ -189,16 +189,11 @@ int MPIR_Allreduce_intra (
     int is_homogeneous;
     int rc;
 #endif
-    int comm_size, rank;
     MPI_Aint type_size;
     int mpi_errno = MPI_SUCCESS;
     int mpi_errno_ret = MPI_SUCCESS;
     int nbytes = 0;
-    int mask, dst, is_commutative, pof2, newrank, rem, newdst, i,
-        send_idx, recv_idx, last_idx, send_cnt, recv_cnt, *cnts, *disps; 
-    MPI_Aint true_extent, true_lb, extent;
-    void *tmp_buf;
-    MPIR_CHKLMEM_DECL(3);
+    int is_commutative, pof2;
     
     if (count == 0) goto fn_exit;
 
@@ -325,7 +320,6 @@ int MPIR_Allreduce_intra (
     }
 
   fn_exit:
-    MPIR_CHKLMEM_FREEALL();
     if (mpi_errno_ret)
         mpi_errno = mpi_errno_ret;
     return (mpi_errno);
@@ -445,12 +439,9 @@ int MPIR_Allreduce_recursive_doubling(
     int rc;
 #endif
     int comm_size, rank;
-    MPI_Aint type_size;
     int mpi_errno = MPI_SUCCESS;
     int mpi_errno_ret = MPI_SUCCESS;
-    int nbytes = 0;
-    int mask, dst, is_commutative, pof2, newrank, rem, newdst, i,
-        send_idx, recv_idx, last_idx, send_cnt, recv_cnt, *cnts, *disps;
+    int mask, dst, is_commutative, pof2, newrank, rem, newdst;
     MPI_Aint true_extent, true_lb, extent;
     void *tmp_buf;
 
@@ -475,8 +466,6 @@ int MPIR_Allreduce_recursive_doubling(
                                    count, datatype);
         if (mpi_errno) MPIR_ERR_POP(mpi_errno);
     }
-
-    MPIR_Datatype_get_size_macro(datatype, type_size);
 
     /* find nearest power-of-two less than or equal to comm_size */
     pof2 = 1;
@@ -631,19 +620,15 @@ int MPIR_Allreduce_reduce_scatter_allgather(
     int rc;
 #endif
     int comm_size, rank;
-    MPI_Aint type_size;
     int mpi_errno = MPI_SUCCESS;
     int mpi_errno_ret = MPI_SUCCESS;
-    int nbytes = 0;
-    int mask, dst, is_commutative, pof2, newrank, rem, newdst, i,
+    int mask, dst, pof2, newrank, rem, newdst, i,
         send_idx, recv_idx, last_idx, send_cnt, recv_cnt, *cnts, *disps;
     MPI_Aint true_extent, true_lb, extent;
     void *tmp_buf;
 
     comm_size = comm_ptr->local_size;
     rank = comm_ptr->rank;
-
-    is_commutative = MPIR_Op_is_commutative(op);
 
     /* need to allocate temporary buffer to store incoming data*/
     MPIR_Type_get_true_extent_impl(datatype, &true_lb, &true_extent);
@@ -661,8 +646,6 @@ int MPIR_Allreduce_reduce_scatter_allgather(
                                    count, datatype);
         if (mpi_errno) MPIR_ERR_POP(mpi_errno);
     }
-
-    MPIR_Datatype_get_size_macro(datatype, type_size);
 
     /* find nearest power-of-two less than or equal to comm_size */
     pof2 = 1;
