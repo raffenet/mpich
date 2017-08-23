@@ -3,76 +3,7 @@
 
 #include "ofi_impl.h"
 #include "coll_algo_params.h"
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Barrier_recursive_doubling(MPIR_Comm * comm_ptr,
-                                         MPIR_Errflag_t * errflag,
-                                         MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Bcast_binomial(void *buffer,
-                             int count,
-                             MPI_Datatype datatype,
-                             int root,
-                             MPIR_Comm * comm_ptr,
-                             MPIR_Errflag_t * errflag,
-                             MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Bcast_scatter_doubling_allgather(void *buffer,
-                                               int count,
-                                               MPI_Datatype datatype,
-                                               int root,
-                                               MPIR_Comm * comm_ptr,
-                                               MPIR_Errflag_t * errflag,
-                                               MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Bcast_scatter_ring_allgather(void *buffer, int count,
-                                           MPI_Datatype datatype, int root,
-                                           MPIR_Comm * comm_ptr,
-                                           MPIR_Errflag_t * errflag,
-                                           MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_allreduce_recursive_doubling(const void *sendbuf,
-                                           void *recvbuf, int count,
-                                           MPI_Datatype datatype,
-                                           MPI_Op op, MPIR_Comm * comm_ptr,
-                                           MPIR_Errflag_t * errflag,
-                                           MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_allreduce_reduce_scatter_allgather(const void *sendbuf,
-                                                 void *recvbuf, int count,
-                                                 MPI_Datatype datatype,
-                                                 MPI_Op op,
-                                                 MPIR_Comm * comm_ptr,
-                                                 MPIR_Errflag_t * errflag,
-                                                 MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_reduce_redscat_gather(const void *sendbuf, void *recvbuf,
-                                    int count, MPI_Datatype datatype,
-                                    MPI_Op op, int root,
-                                    MPIR_Comm * comm_ptr,
-                                    MPIR_Errflag_t * errflag,
-                                    MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_reduce_binomial(const void *sendbuf, void *recvbuf,
-                              int count, MPI_Datatype datatype, MPI_Op op,
-                              int root, MPIR_Comm * comm_ptr,
-                              MPIR_Errflag_t * errflag,
-                              MPIDI_OFI_coll_algo_container_t * params_container)
-MPL_STATIC_INLINE_SUFFIX;
+#include "ofi_coll_impl.h"
 
 MPL_STATIC_INLINE_PREFIX
 MPIDI_OFI_coll_algo_container_t *MPIDI_OFI_Barrier_select(MPIR_Comm * comm_ptr,
