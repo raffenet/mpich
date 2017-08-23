@@ -13,108 +13,13 @@
 
 #include "ch4_impl.h"
 #include "ch4r_proc.h"
+#include "ch4_coll_impl.h"
 
 #ifdef MPIDI_BUILD_CH4_SHM
 #include "../shm/include/shm.h"
 #endif
 
 #include "../../mpi/coll/collutil.h"
-#include "coll_algo_params.h"
-
-/* SHM_Barrier and NM_Barrier */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Barrier_composition_alpha(MPIR_Comm * comm,
-                                    MPIR_Errflag_t * errflag,
-                                    MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* SHM_Barrier or NM_Barrier */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Barrier_composition_beta(MPIR_Comm * comm,
-                                   MPIR_Errflag_t * errflag,
-                                   MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* Wrapper for intercommunicator */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Barrier_intercomm(MPIR_Comm * comm, MPIR_Errflag_t * errflag,
-                            MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* NM_Bcast and SHM_Bcast */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Bcast_composition_alpha(void *buffer, int count,
-                                  MPI_Datatype datatype, int root,
-                                  MPIR_Comm * comm,
-                                  MPIR_Errflag_t * errflag,
-                                  MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Bcast_composition_beta(void *buffer, int count,
-                                 MPI_Datatype datatype, int root,
-                                 MPIR_Comm * comm,
-                                 MPIR_Errflag_t * errflag,
-                                 MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* NM_Bcast or SHM_Bcast */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Bcast_composition_gamma(void *buffer, int count,
-                                  MPI_Datatype datatype, int root,
-                                  MPIR_Comm * comm,
-                                  MPIR_Errflag_t * errflag,
-                                  MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* Wrapper for intercommunicator */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Bcast_intercomm(void *buffer, int count, MPI_Datatype datatype,
-                          int root, MPIR_Comm * comm,
-                          MPIR_Errflag_t * errflag,
-                          MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* SHM_Reduce, NM_Allreduce and SHM_Bcast */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Allreduce_composition_alpha(const void *sendbuf, void *recvbuf,
-                                      int count, MPI_Datatype datatype,
-                                      MPI_Op op, MPIR_Comm * comm,
-                                      MPIR_Errflag_t * errflag,
-                                      MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* NM_Reduce and NM_Bcast */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Allreduce_composition_beta(const void *sendbuf, void *recvbuf,
-                                     int count, MPI_Datatype datatype,
-                                     MPI_Op op, MPIR_Comm * comm,
-                                     MPIR_Errflag_t * errflag,
-                                     MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* Wrapper for intercommunicator */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Allreduce_intercomm(const void *sendbuf, void *recvbuf,
-                              int count, MPI_Datatype datatype, MPI_Op op,
-                              MPIR_Comm * comm, MPIR_Errflag_t * errflag,
-                              MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* SHM_Reduce and NM_Reduce */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Reduce_composition_alpha(const void *sendbuf, void *recvbuf,
-                                   int count, MPI_Datatype datatype,
-                                   MPI_Op op, int root, MPIR_Comm * comm,
-                                   MPIR_Errflag_t * errflag,
-                                   MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* NM_Reduce or SHM_Reduce */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Reduce_composition_beta(const void *sendbuf, void *recvbuf,
-                                  int count, MPI_Datatype datatype,
-                                  MPI_Op op, int root, MPIR_Comm * comm,
-                                  MPIR_Errflag_t * errflag,
-                                  MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
-/* Wrapper for intercommunicator */
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_Reduce_intercomm(const void *sendbuf, void *recvbuf, int count,
-                           MPI_Datatype datatype, MPI_Op op, int root,
-                           MPIR_Comm * comm, MPIR_Errflag_t * errflag,
-                           MPIDI_coll_algo_container_t * ch4_algo_parameters_container)
-MPL_STATIC_INLINE_SUFFIX;
 
 MPL_STATIC_INLINE_PREFIX
 MPIDI_coll_algo_container_t *MPIDI_CH4_Barrier_select(MPIR_Comm * comm,

@@ -46,22 +46,6 @@ fn_fail:
 }
 
 #undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_Barrier_recursive_doubling
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Barrier_recursive_doubling(MPIR_Comm * comm_ptr,
-                                         MPIR_Errflag_t * errflag,
-                                         MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Barrier_recursive_doubling(comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
-#undef FUNCNAME
 #define FUNCNAME MPIDI_NM_mpi_bcast
 #undef FCNAME
 #define FCNAME MPL_QUOTE(FUNCNAME)
@@ -93,66 +77,6 @@ fn_fail:
 }
 
 #undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_Bcast_binomial
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Bcast_binomial(void *buffer,
-                             int count,
-                             MPI_Datatype datatype,
-                             int root,
-                             MPIR_Comm * comm_ptr,
-                             MPIR_Errflag_t * errflag,
-                             MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Bcast_binomial(buffer, count, datatype, root, comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_Bcast_scatter_doubling_allgather
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Bcast_scatter_doubling_allgather(void *buffer,
-                                               int count,
-                                               MPI_Datatype datatype,
-                                               int root,
-                                               MPIR_Comm * comm_ptr,
-                                               MPIR_Errflag_t * errflag,
-                                               MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Bcast_scatter_ring_allgather(buffer, count, datatype, root, comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_Bcast_scatter_ring_allgather
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_Bcast_scatter_ring_allgather(void *buffer,
-                                           int count,
-                                           MPI_Datatype datatype,
-                                           int root,
-                                           MPIR_Comm * comm_ptr,
-                                           MPIR_Errflag_t * errflag,
-                                           MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Bcast_scatter_ring_allgather(buffer, count, datatype, root, comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
-#undef FUNCNAME
 #define FUNCNAME MPIDI_NM_mpi_allreduce
 #undef FCNAME
 #define FCNAME MPL_QUOTE(FUNCNAME)
@@ -181,42 +105,6 @@ fn_exit:
 fn_fail:
     goto fn_exit;
 }
-
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_allreduce_recursive_doubling
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_allreduce_recursive_doubling(const void *sendbuf, void *recvbuf, int count,
-                                           MPI_Datatype datatype, MPI_Op op,
-                                           MPIR_Comm * comm_ptr, MPIR_Errflag_t * errflag,
-                                           MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Allreduce_recursive_doubling(sendbuf, recvbuf, count, datatype, op, comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_allreduce_reduce_scatter_allgather
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_allreduce_reduce_scatter_allgather(const void *sendbuf, void *recvbuf, int count,
-                                                 MPI_Datatype datatype, MPI_Op op,
-                                                 MPIR_Comm * comm_ptr, MPIR_Errflag_t * errflag,
-                                                 MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Allreduce_reduce_scatter_allgather(sendbuf, recvbuf, count, datatype, op, comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
 
 #undef FUNCNAME
 #define FUNCNAME MPIDI_NM_mpi_allgather
@@ -425,40 +313,6 @@ fn_exit:
     return mpi_errno;
 fn_fail:
     goto fn_exit;
-}
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_reduce_redscat_gather
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_reduce_redscat_gather(const void *sendbuf, void *recvbuf, int count,
-                                    MPI_Datatype datatype, MPI_Op op, int root,
-                                    MPIR_Comm * comm_ptr, MPIR_Errflag_t * errflag,
-                                    MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Reduce_redscat_gather(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, errflag);
-
-    return mpi_errno;
-}
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_reduce_binomial
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX
-int MPIDI_OFI_reduce_binomial(const void *sendbuf, void *recvbuf, int count,
-                              MPI_Datatype datatype, MPI_Op op, int root,
-                              MPIR_Comm * comm_ptr, MPIR_Errflag_t * errflag,
-                              MPIDI_OFI_coll_algo_container_t * params_container ATTRIBUTE((unused)))
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    mpi_errno = MPIR_Reduce_binomial(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, errflag);
-
-    return mpi_errno;
 }
 
 #undef FUNCNAME
