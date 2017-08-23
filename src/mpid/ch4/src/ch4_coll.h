@@ -350,7 +350,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Allreduce_composition_alpha(const void *sendb
     int mpi_errno = MPI_SUCCESS;
     void * reduce_node_container = MPIDI_coll_get_next_container(ch4_algo_parameters_container);
     void * allred_roots_container = MPIDI_coll_get_next_container(reduce_node_container);
-    void * bcast_node_container = MPIDI_coll_get_next_container(bcast_node_container);
+    void * bcast_node_container = MPIDI_coll_get_next_container(allred_roots_container);
 
     if(comm->node_comm != NULL) {
         if((sendbuf == MPI_IN_PLACE) && (comm->node_comm->rank != 0)) {

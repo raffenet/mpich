@@ -87,7 +87,7 @@ MPIDI_POSIX_coll_algo_container_t *MPIDI_POSIX_Barrier_select(MPIR_Comm * comm_p
 }
 
 MPL_STATIC_INLINE_PREFIX
-int MPIDI_POSIX_Barrier_call(MPIR_Comm * comm,
+int MPIDI_POSIX_Barrier_call(MPIR_Comm * comm_ptr,
                              MPIR_Errflag_t * errflag,
                              MPIDI_POSIX_coll_algo_container_t * ch4_algo_parameters_container)
 {
@@ -96,10 +96,10 @@ int MPIDI_POSIX_Barrier_call(MPIR_Comm * comm,
     switch (ch4_algo_parameters_container->id) {
     case MPIDI_POSIX_barrier_recursive_doubling_id:
         mpi_errno =
-            MPIDI_POSIX_Barrier_recursive_doubling(comm, errflag, ch4_algo_parameters_container);
+            MPIDI_POSIX_Barrier_recursive_doubling(comm_ptr, errflag, ch4_algo_parameters_container);
         break;
     default:
-        mpi_errno = MPIR_Barrier(comm, errflag);
+        mpi_errno = MPIR_Barrier(comm_ptr, errflag);
         break;
     }
 
@@ -135,7 +135,7 @@ MPIDI_POSIX_coll_algo_container_t *MPIDI_POSIX_Bcast_select(void *buffer,
 
 MPL_STATIC_INLINE_PREFIX
 int MPIDI_POSIX_Bcast_call(void *buffer, int count, MPI_Datatype datatype,
-                           int root, MPIR_Comm * comm,
+                           int root, MPIR_Comm * comm_ptr,
                            MPIR_Errflag_t * errflag,
                            MPIDI_POSIX_coll_algo_container_t * ch4_algo_parameters_container)
 {
@@ -144,21 +144,21 @@ int MPIDI_POSIX_Bcast_call(void *buffer, int count, MPI_Datatype datatype,
     switch (ch4_algo_parameters_container->id) {
     case MPIDI_POSIX_bcast_binomial_id:
         mpi_errno =
-            MPIDI_POSIX_Bcast_binomial(buffer, count, datatype, root, comm, errflag,
+            MPIDI_POSIX_Bcast_binomial(buffer, count, datatype, root, comm_ptr, errflag,
                                        ch4_algo_parameters_container);
         break;
     case MPIDI_POSIX_bcast_scatter_doubling_allgather_id:
         mpi_errno =
-            MPIDI_POSIX_Bcast_scatter_doubling_allgather(buffer, count, datatype, root, comm,
+            MPIDI_POSIX_Bcast_scatter_doubling_allgather(buffer, count, datatype, root, comm_ptr,
                                                          errflag, ch4_algo_parameters_container);
         break;
     case MPIDI_POSIX_bcast_scatter_ring_allgather_id:
         mpi_errno =
-            MPIDI_POSIX_Bcast_scatter_ring_allgather(buffer, count, datatype, root, comm, errflag,
+            MPIDI_POSIX_Bcast_scatter_ring_allgather(buffer, count, datatype, root, comm_ptr, errflag,
                                                      ch4_algo_parameters_container);
         break;
     default:
-        mpi_errno = MPIR_Bcast(buffer, count, datatype, root, comm, errflag);
+        mpi_errno = MPIR_Bcast(buffer, count, datatype, root, comm_ptr, errflag);
         break;
     }
 
