@@ -59,7 +59,7 @@ cvars:
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 
-#if !defined(USE_PMI2_API)
+#if !defined(USE_PMI2_API) && !defined(USE_PMIX_API)
 /* this function is not used in pmi2 */
 #undef FUNCNAME
 #define FUNCNAME MPIR_NODEMAP_publish_node_id
@@ -427,6 +427,8 @@ static inline int MPIR_NODEMAP_build_nodemap(int sz,
         MPIR_ERR_CHKINTERNAL(!did_map, mpi_errno,
                              "unable to populate node ids from PMI_process_mapping");
     }
+#elif defined(USE_PMIX_API)
+    MPIR_Assert(0);
 #else /* USE_PMI2_API */
     if (myrank == -1) {
         /* fixme this routine can't handle the dynamic process case at this

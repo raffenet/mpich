@@ -886,13 +886,17 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         MPIDI_OFI_STR_CALL(MPL_str_add_binary_arg
                            (&val, &maxlen, "OFI", (char *) &MPIDI_Global.addrname,
                             MPIDI_Global.addrnamelen), buscard_len);
+#ifndef USE_PMIX_API
         MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Get_my_name(MPIDI_Global.kvsname, MPIDI_KVSAPPSTRLEN), pmi);
+#endif
 
         val = valS;
         MPL_snprintf(keyS, sizeof(keyS), "OFI-%d", rank);
 #ifdef USE_PMI2_API
         MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Put(keyS, val), pmi);
         MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Fence(), pmi);
+#elif defined(USE_PMIX_API)
+        MPIR_Assert(0);
 #else
         MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Put(MPIDI_Global.kvsname, keyS, val), pmi);
         MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Commit(MPIDI_Global.kvsname), pmi);
@@ -933,6 +937,8 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
             MPIDI_OFI_PMI_CALL_POP(PMI2_KVS_Get
                                    (NULL, -1, keyS, valS, MPIDI_KVSAPPSTRLEN, &vallen), pmi);
             MPIR_Assert(vallen > 0);
+#elif defined(USE_PMIX_API)
+            MPIR_Assert(0);
 #else
             MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Get
                                    (MPIDI_Global.kvsname, keyS, valS, MPIDI_KVSAPPSTRLEN), pmi);
@@ -967,7 +973,9 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         if (mpi_errno)
             MPIR_ERR_POP(mpi_errno);
         MPIDU_shm_seg_destroy(&memory, num_local);
+#ifndef USE_PMIX_API
         PMI_Barrier();
+#endif
     }
 
     /* -------------------------------- */
@@ -1035,6 +1043,7 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     /* -------------------------------- */
     /* Initialize Dynamic Tasking       */
     /* -------------------------------- */
+#ifndef USE_PMIX_API
     MPIDI_OFI_conn_manager_init();
     if (spawned) {
         char parent_port[MPIDI_MAX_KVS_VALUE_LEN];
@@ -1046,6 +1055,7 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
         MPIR_Assert(MPIR_Process.comm_parent != NULL);
         MPL_strncpy(MPIR_Process.comm_parent->name, "MPI_COMM_PARENT", MPI_MAX_OBJECT_NAME);
     }
+#endif
 
   fn_exit:
 
@@ -1140,6 +1150,8 @@ static inline int MPIDI_NM_mpi_finalize_hook(void)
     }
 #ifdef USE_PMI2_API
     PMI2_Finalize();
+#elif defined(USE_PMIX_API)
+    MPIR_Assert(0);
 #else
     PMI_Finalize();
 #endif
