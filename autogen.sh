@@ -156,6 +156,7 @@ do_genstates=yes
 do_atdir_check=no
 do_atver_check=yes
 do_subcfg_m4=yes
+do_izem=yes
 
 export do_build_configure
 
@@ -273,6 +274,10 @@ for arg in "$@" ; do
 	    autotoolsdir=`echo "A$arg" | sed -e 's/.*=//'`
 	    ;;
 
+    -without-izem|--without-izem)
+        do_izem=no
+        ;;
+
 	-help|--help|-usage|--usage)
 	    cat <<EOF
    ./autogen.sh [ --with-autotools=dir ] \\
@@ -320,7 +325,16 @@ EOF
 done
 
 ########################################################################
-## Check for the location of autotools
+## Set up external packages
+########################################################################
+
+# external packages that require autogen.sh to be run for each of them
+externals="src/pm/hydra src/mpi/romio src/openpa"
+
+if [ "yes" = "$do_izem" ] ; then
+    externals="${externals} src/izem"
+fi
+
 ########################################################################
 
 if [ -z "$autotoolsdir" ] ; then
