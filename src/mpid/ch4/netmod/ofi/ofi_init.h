@@ -1098,19 +1098,29 @@ static inline int MPIDI_NM_mpi_init_hook(int rank,
     /* -------------------------------- */
     /* Initialize Dynamic Tasking       */
     /* -------------------------------- */
-#ifndef USE_PMIX_API
     MPIDI_OFI_conn_manager_init();
     if (spawned) {
         char parent_port[MPIDI_MAX_KVS_VALUE_LEN];
+#ifndef USE_PMIX_API
         MPIDI_OFI_PMI_CALL_POP(PMI_KVS_Get(MPIDI_Global.kvsname,
                                            MPIDI_PARENT_PORT_KVSKEY,
                                            parent_port, MPIDI_MAX_KVS_VALUE_LEN), pmi);
+#else
+        {
+            pmix_value_t *pvalue = NULL;
+
+            MPIDI_OFI_PMI_CALL_POP(PMIx_Get(&MPIR_Process.pmix_wcproc,
+                                            MPIDI_PARENT_PORT_KVSKEY,
+                                            NULL, 0, &pvalue), pmix);
+            MPL_strncpy(parent_port, pvalue->data.string, MPIDI_MAX_KVS_VALUE_LEN);
+            PMIX_VALUE_RELEASE(pvalue);
+        }
+#endif
         MPIDI_OFI_MPI_CALL_POP(MPID_Comm_connect
                                (parent_port, NULL, 0, comm_world, &MPIR_Process.comm_parent));
         MPIR_Assert(MPIR_Process.comm_parent != NULL);
         MPL_strncpy(MPIR_Process.comm_parent->name, "MPI_COMM_PARENT", MPI_MAX_OBJECT_NAME);
     }
-#endif
 
   fn_exit:
 

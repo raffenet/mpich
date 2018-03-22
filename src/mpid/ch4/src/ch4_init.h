@@ -163,17 +163,49 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
         MPL_strncpy(MPIR_Process.pmix_wcproc.nspace, MPIR_Process.pmix_proc.nspace, PMIX_MAX_NSLEN);
         MPIR_Process.pmix_wcproc.rank = PMIX_RANK_WILDCARD;
 
+        /* FIXME: PMIx implementation specific
+         * not sure if PMIX_UNIV_SIZE should be requested instead
+         * */
+#if 1
         pmi_errno = PMIx_Get(&MPIR_Process.pmix_wcproc, PMIX_JOB_SIZE, NULL, 0, &pvalue);
+#else
+        pmi_errno = PMIx_Get(&MPIR_Process.pmix_wcproc, PMIX_UNIV_SIZE, NULL, 0, &pvalue);
+#endif
         if (pmi_errno != PMIX_SUCCESS) {
             MPIR_ERR_SETANDJUMP1(pmi_errno, MPI_ERR_OTHER, "**pmix_get", "**pmix_get %d",
                                  pmi_errno);
         }
         size = pvalue->data.uint32;
         PMIX_VALUE_RELEASE(pvalue);
+        pvalue = NULL;
 
-        /* appnum, has_parent is not set for now */
         appnum = 0;
+        /* FIXME: PMIx implementation specific
+         * PMIX_APPNUM is not guaranteed to be defined
+         * */
+#if 1
+        pmi_errno = PMIx_Get(&MPIR_Process.pmix_wcproc, PMIX_APPNUM, NULL, 0, &pvalue);
+        if (pmi_errno == PMIX_SUCCESS) {
+            appnum = pvalue->data.uint32;
+            PMIX_VALUE_RELEASE(pvalue);
+            pvalue = NULL;
+        }
+#endif
+
         has_parent = 0;
+        /* FIXME: PMIx implementation specific
+         * PMIX_SPAWNED is not guaranteed to be defined
+         * */
+#if 0
+        pmi_errno = PMIx_Get(&MPIR_Process.pmix_wcproc, PMIX_SPAWNED, NULL, 0, &pvalue);
+#else
+        pmi_errno = PMIx_Get(&MPIR_Process.pmix_wcproc, MPIDI_PARENT_PORT_KVSKEY, NULL, 0, &pvalue);
+#endif
+        if (pmi_errno == PMIX_SUCCESS) {
+            has_parent = 1;
+            PMIX_VALUE_RELEASE(pvalue);
+            pvalue = NULL;
+        }
     }
 #else
     pmi_errno = PMI_Init(&has_parent);

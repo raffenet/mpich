@@ -33,28 +33,20 @@ cvars:
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 
-#ifdef USE_PMIX_API
-#undef FUNCNAME
-#define FUNCNAME MPID_Comm_spawn_multiple
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
-                                                      char *commands[],
-                                                      char **argvs[],
-                                                      const int maxprocs[],
-                                                      MPIR_Info * info_ptrs[],
-                                                      int root,
-                                                      MPIR_Comm * comm_ptr,
-                                                      MPIR_Comm ** intercomm, int errcodes[])
-{
-    MPIR_Assert(0);
-}
-#else
 static inline int MPIDI_mpi_to_pmi_keyvals(MPIR_Info * info_ptr,
-                                           PMI_keyval_t ** kv_ptr, int *nkeys_ptr)
+#ifndef USE_PMIX_API
+                                           PMI_keyval_t ** kv_ptr,
+#else
+                                           pmix_info_t ** kv_ptr,
+#endif
+                                           int *nkeys_ptr)
 {
     char key[MPI_MAX_INFO_KEY];
+#ifndef USE_PMIX_API
     PMI_keyval_t *kv = 0;
+#else
+    pmix_info_t *kv = NULL;
+#endif
     int i, nkeys = 0, vallen, flag, mpi_errno = MPI_SUCCESS;
 
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_MPI_TO_PMI_KEYVALS);
@@ -68,16 +60,28 @@ static inline int MPIDI_mpi_to_pmi_keyvals(MPIR_Info * info_ptr,
     if (nkeys == 0)
         goto fn_exit;
 
+#ifndef USE_PMIX_API
     kv = (PMI_keyval_t *) MPL_malloc(nkeys * sizeof(PMI_keyval_t), MPL_MEM_BUFFER);
+#else
+    kv = (pmix_info_t *) MPL_malloc(nkeys * sizeof(pmix_info_t), MPL_MEM_BUFFER);
+#endif
 
     for (i = 0; i < nkeys; i++) {
         mpi_errno = MPIR_Info_get_nthkey_impl(info_ptr, i, key);
         if (mpi_errno)
             MPIR_ERR_POP(mpi_errno);
         MPIR_Info_get_valuelen_impl(info_ptr, key, &vallen, &flag);
+#ifndef USE_PMIX_API
         kv[i].key = (const char *) MPL_strdup(key);
         kv[i].val = (char *) MPL_malloc(vallen + 1, MPL_MEM_BUFFER);
         MPIR_Info_get_impl(info_ptr, key, vallen + 1, kv[i].val, &flag);
+#else
+        MPL_strncpy(kv[i].key, key, PMIX_MAX_KEYLEN);
+        kv[i].flags = 0;
+        kv[i].value.type = PMIX_STRING;
+        kv[i].value.data.string = (char *) MPL_malloc(vallen + 1, MPL_MEM_BUFFER);
+        MPIR_Info_get_impl(info_ptr, key, vallen + 1, kv[i].value.data.string, &flag);
+#endif
     }
 
   fn_exit:
@@ -90,7 +94,13 @@ static inline int MPIDI_mpi_to_pmi_keyvals(MPIR_Info * info_ptr,
     goto fn_exit;
 }
 
-static inline void MPIDI_free_pmi_keyvals(PMI_keyval_t ** kv, int size, int *counts)
+static inline void MPIDI_free_pmi_keyvals(
+#ifndef USE_PMIX_API
+                                          PMI_keyval_t ** kv,
+#else
+                                          pmix_info_t ** kv,
+#endif
+                                          int size, int *counts)
 {
     int i, j;
 
@@ -99,11 +109,15 @@ static inline void MPIDI_free_pmi_keyvals(PMI_keyval_t ** kv, int size, int *cou
 
     for (i = 0; i < size; i++) {
         for (j = 0; j < counts[i]; j++) {
+#ifndef USE_PMIX_API
             if (kv[i][j].key != NULL)
                 MPL_free((char *) kv[i][j].key);
 
             if (kv[i][j].val != NULL)
                 MPL_free(kv[i][j].val);
+#else
+            PMIX_VALUE_DESTRUCT(&kv[i][j].value);
+#endif
         }
 
         if (kv[i] != NULL)
@@ -128,7 +142,14 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
 {
     char port_name[MPI_MAX_PORT_NAME];
     int *info_keyval_sizes = 0, i, mpi_errno = MPI_SUCCESS;
+#ifndef USE_PMIX_API
     PMI_keyval_t **info_keyval_vectors = 0, preput_keyval_vector;
+#else
+    char cwd[PATH_MAX], nspace[PMIX_MAX_NSLEN+1], ***argv = NULL, *cmd, **arg;
+    pmix_info_t job_info, **info_keyval_vectors = NULL;
+    pmix_app_t *app = NULL;
+    int argc, j;
+#endif
     int *pmi_errcodes = 0, pmi_errno = 0;
     int total_num_processes, should_accept = 1;
 
@@ -143,11 +164,13 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
         for (i = 0; i < count; i++)
             total_num_processes += maxprocs[i];
 
+#ifndef USE_PMIX_API
         pmi_errcodes = (int *) MPL_malloc(sizeof(int) * total_num_processes, MPL_MEM_BUFFER);
         MPIR_ERR_CHKANDJUMP(!pmi_errcodes, mpi_errno, MPI_ERR_OTHER, "**nomem");
 
         for (i = 0; i < total_num_processes; i++)
             pmi_errcodes[i] = 0;
+#endif
 
         mpi_errno = MPID_Open_port(NULL, port_name);
         if (mpi_errno)
@@ -156,7 +179,11 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
         info_keyval_sizes = (int *) MPL_malloc(count * sizeof(int), MPL_MEM_BUFFER);
         MPIR_ERR_CHKANDJUMP(!info_keyval_sizes, mpi_errno, MPI_ERR_OTHER, "**nomem");
         info_keyval_vectors =
+#ifndef USE_PMIX_API
             (PMI_keyval_t **) MPL_malloc(count * sizeof(PMI_keyval_t *), MPL_MEM_BUFFER);
+#else
+            (pmix_info_t **) MPL_malloc(count * sizeof(pmix_info_t *), MPL_MEM_BUFFER);
+#endif
         MPIR_ERR_CHKANDJUMP(!info_keyval_vectors, mpi_errno, MPI_ERR_OTHER, "**nomem");
 
         if (!info_ptrs)
@@ -172,6 +199,7 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
                     MPIR_ERR_POP(mpi_errno);
             }
 
+#ifndef USE_PMIX_API
         preput_keyval_vector.key = MPIDI_PARENT_PORT_KVSKEY;
         preput_keyval_vector.val = port_name;
         pmi_errno = PMI_Spawn_multiple(count, (const char **)
@@ -192,6 +220,81 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
 
             should_accept = !should_accept;
         }
+#else
+        app = (pmix_app_t *)MPL_malloc(sizeof(pmix_app_t) * count, MPL_MEM_BUFFER);
+        MPIR_ERR_CHKANDJUMP(!app, mpi_errno, MPI_ERR_OTHER, "**nomem");
+
+        argv = (char ***)MPL_malloc(sizeof(char **) * count, MPL_MEM_BUFFER);
+        MPIR_ERR_CHKANDJUMP(!argv, mpi_errno, MPI_ERR_OTHER, "**nomem");
+
+        for (i = 0; i < count; i++) {
+            /* FIXME: PMIx implementation specific
+             * Reference server couldn't locate spawned binary without full path
+             * OS-specfic call: realpath() here, error message might be incorrect
+             * */
+#if 1
+            cmd = realpath(commands[i], NULL);
+#else
+            cmd = MPL_strdup(commands[i]);
+#endif
+            MPIR_ERR_CHKANDJUMP(!cmd, mpi_errno, MPI_ERR_OTHER, "**nomem");
+
+            /* Re-pack arguments as PMIx requires 'exec' style */
+            argc = 0;
+            if (argvs && argvs != MPI_ARGVS_NULL && argvs[i]) {
+                for (arg = argvs[i]; *arg; arg++, argc++) ;
+            }
+            argv[i] = (char **)MPL_malloc(sizeof(char *) * (argc+2), MPL_MEM_BUFFER);
+            MPIR_ERR_CHKANDJUMP(!argv[i], mpi_errno, MPI_ERR_OTHER, "**nomem");
+
+            argv[i][0] = cmd;
+            for (j = 0; j < argc; j++)
+                argv[i][j+1] = argvs[i][j];
+            argv[i][argc+1] = NULL;
+
+            app[i].cmd = cmd;
+            app[i].argv = argv[i];
+            /* FIXME: PMIx implementation specific
+             * Reference server doesn't pass parent's enviornment, need to pass explicitly
+             * OS-specfic variable: environ used here
+             * */
+#if 1
+            app[i].env = environ;
+#else
+            app[i].env = NULL;
+#endif
+            /* FIXME: PMIx implementation specific
+             * Reference server may use cwd somehow
+             * Predefined MPI info key might be applied here
+             * */
+#if 1
+            getcwd(cwd, PATH_MAX);
+            app[i].cwd = MPL_strdup(cwd);
+#else
+            app[i].cwd = NULL;
+#endif
+            app[i].maxprocs = maxprocs[i];
+            app[i].info = info_keyval_vectors[i];
+            app[i].ninfo = info_keyval_sizes[i];
+        }
+        /* FIXME: PMIx implementation specific
+         * Reference server will pass all the job_info keys into spawned process space
+         * Only way to pass port_name, no preput_keyval in PMIx
+         * 'appnum' is perhaps needed to be passed here
+         * */
+#if 1
+        MPL_strncpy(job_info.key, MPIDI_PARENT_PORT_KVSKEY, PMIX_MAX_KEYLEN);
+        job_info.flags = 0;
+        job_info.value.type = PMIX_STRING;
+        job_info.value.data.string = MPL_strdup(port_name);
+#endif
+
+        pmi_errno = PMIx_Spawn(&job_info, 1, app, count, nspace);
+        if (pmi_errno != PMIX_SUCCESS)
+            MPIR_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER,
+                                 "**pmi_spawn_multiple", "**pmi_spawn_multiple %d", pmi_errno);
+        PMIX_VALUE_DESTRUCT(&job_info.value);
+#endif
     }
 
     if (errcodes != MPI_ERRCODES_IGNORE) {
@@ -218,11 +321,13 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
         if (mpi_errno)
             MPIR_ERR_POP(mpi_errno);
     } else {
+#ifndef USE_PMIX_API
         if ((pmi_errno == PMI_SUCCESS) && (errcodes[0] != 0)) {
             mpi_errno = MPIR_Comm_create(intercomm);
             if (mpi_errno)
                 MPIR_ERR_POP(mpi_errno);
         }
+#endif
     }
 
     if (comm_ptr->rank == root) {
@@ -233,6 +338,17 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
 
   fn_exit:
 
+#ifdef USE_PMIX_API
+    if (comm_ptr->rank == root) {
+        for (i = 0; i < count; i++) {
+            MPL_free(app[i].cmd);
+            MPL_free(app[i].argv);
+            MPL_free(app[i].cwd);
+        }
+        MPL_free(argv);
+        MPL_free(app);
+    }
+#endif
     if (info_keyval_vectors) {
         MPIDI_free_pmi_keyvals(info_keyval_vectors, count, info_keyval_sizes);
         MPL_free(info_keyval_vectors);
@@ -241,15 +357,16 @@ MPL_STATIC_INLINE_PREFIX int MPID_Comm_spawn_multiple(int count,
     if (info_keyval_sizes)
         MPL_free(info_keyval_sizes);
 
+#ifndef USE_PMIX_API
     if (pmi_errcodes)
         MPL_free(pmi_errcodes);
+#endif
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPID_COMM_SPAWN_MULTIPLE);
     return mpi_errno;
   fn_fail:
     goto fn_exit;
 }
-#endif
 
 #undef FUNCNAME
 #define FUNCNAME MPID_Comm_connect

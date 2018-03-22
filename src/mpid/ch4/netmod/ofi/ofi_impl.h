@@ -172,6 +172,7 @@
             MPID_THREAD_CS_EXIT(POBJ,MPIDI_OFI_THREAD_FI_MUTEX);        \
         } while (0)
 
+#ifndef USE_PMIX_API
 #define MPIDI_OFI_PMI_CALL_POP(FUNC,STR)                    \
   do                                                          \
     {                                                         \
@@ -186,6 +187,22 @@
                             FCNAME,                           \
                             #STR);                            \
     } while (0)
+#else
+#define MPIDI_OFI_PMI_CALL_POP(FUNC,STR)                    \
+  do                                                          \
+    {                                                         \
+      pmi_errno  = FUNC;                                      \
+      MPIDI_OFI_ERR(pmi_errno!=PMIX_SUCCESS,           \
+                            mpi_errno,                        \
+                            MPI_ERR_OTHER,                    \
+                            "**ofid_"#STR,                    \
+                            "**ofid_"#STR" %s %d %s %s",      \
+                            __SHORT_FILE__,                   \
+                            __LINE__,                         \
+                            FCNAME,                           \
+                            #STR);                            \
+    } while (0)
+#endif
 
 #define MPIDI_OFI_MPI_CALL_POP(FUNC)                               \
   do                                                                 \
