@@ -14,6 +14,35 @@
 #include "ofi_am_impl.h"
 
 #undef FUNCNAME
+#define FUNCNAME MPIDI_OFI_dispatch_ack
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+static inline int MPIDI_OFI_dispatch_ack(int rank, int context_id, uint64_t sreq_ptr, int am_type)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIDI_OFI_ack_msg_t msg;
+    MPIR_Comm *comm;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_OFI_DISPATCH_ACK);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_OFI_DISPATCH_ACK);
+
+    comm = MPIDI_CH4U_context_id_to_comm(context_id);
+
+    msg.hdr.am_hdr_sz = sizeof(msg.pyld);
+    msg.hdr.data_sz = 0;
+    msg.hdr.am_type = am_type;
+    msg.pyld.sreq_ptr = sreq_ptr;
+    MPIDI_OFI_CALL_RETRY_AM(fi_inject(MPIDI_Global.ctx[0].tx, &msg, sizeof(msg),
+                                      MPIDI_OFI_comm_to_phys(comm, rank)),
+                            FALSE /* no lock */ , inject);
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_OFI_DISPATCH_ACK);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+#undef FUNCNAME
 #define FUNCNAME MPIDI_OFI_handle_short_am
 #undef FCNAME
 #define FCNAME MPL_QUOTE(FUNCNAME)
@@ -228,59 +257,69 @@ static inline int MPIDI_OFI_do_handle_long_am(MPIDI_OFI_am_header_t * msg_hdr,
         goto fn_exit;
     }
 
+    /* get the data */
     MPIDI_OFI_AMREQUEST_HDR(rreq, msg_hdr) = *msg_hdr;
     MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_info) = *lmt_msg;
     MPIDI_OFI_AMREQUEST_HDR(rreq, rreq_ptr) = (void *) rreq;
 
-    if (is_contig) {
-        if (in_data_sz > data_sz) {
-            rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
-        } else {
-            rreq->status.MPI_ERROR = MPI_SUCCESS;
-        }
-
-        data_sz = MPL_MIN(data_sz, in_data_sz);
-        MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_cntr) = ((data_sz - 1) / MPIDI_Global.max_send) + 1;
-        MPIDI_OFI_do_rdma_read(p_data,
-                               lmt_msg->src_offset,
-                               data_sz, lmt_msg->context_id, lmt_msg->src_rank, rreq);
-        MPIR_STATUS_SET_COUNT(rreq->status, data_sz);
+    if (!MPIDI_OFI_ENABLE_RMA) {
+        /* send CTS messages */
+        mpi_errno = MPIDI_OFI_dispatch_ack(lmt_msg->src_rank,
+                                           lmt_msg->context_id,
+                                           lmt_msg->sreq_ptr, MPIDI_AMTYPE_LMT_ACK);
+        if (mpi_errno)
+            MPIR_ERR_POP(mpi_errno);
     } else {
-        done = 0;
-        rem = in_data_sz;
-        iov = (struct iovec *) p_data;
-        iov_len = data_sz;
+        if (is_contig) {
+            if (in_data_sz > data_sz) {
+                rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
+            } else {
+                rreq->status.MPI_ERROR = MPI_SUCCESS;
+            }
 
-        /* FIXME: optimize iov processing part */
-
-        /* set lmt counter */
-        MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_cntr) = 0;
-
-        for (i = 0; i < iov_len && rem > 0; i++) {
-            curr_len = MPL_MIN(rem, iov[i].iov_len);
-            num_reads = ((curr_len - 1) / MPIDI_Global.max_send) + 1;
-            MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_cntr) += num_reads;
-            rem -= curr_len;
-        }
-
-        done = 0;
-        rem = in_data_sz;
-
-        for (i = 0; i < iov_len && rem > 0; i++) {
-            curr_len = MPL_MIN(rem, iov[i].iov_len);
-            MPIDI_OFI_do_rdma_read(iov[i].iov_base, lmt_msg->src_offset + done,
-                                   curr_len, lmt_msg->context_id, lmt_msg->src_rank, rreq);
-            rem -= curr_len;
-            done += curr_len;
-        }
-
-        if (rem) {
-            rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
+            data_sz = MPL_MIN(data_sz, in_data_sz);
+            MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_cntr) = ((data_sz - 1) / MPIDI_Global.max_send) + 1;
+            MPIDI_OFI_do_rdma_read(p_data,
+                                   lmt_msg->src_offset,
+                                   data_sz, lmt_msg->context_id, lmt_msg->src_rank, rreq);
+            MPIR_STATUS_SET_COUNT(rreq->status, data_sz);
         } else {
-            rreq->status.MPI_ERROR = MPI_SUCCESS;
-        }
+            done = 0;
+            rem = in_data_sz;
+            iov = (struct iovec *) p_data;
+            iov_len = data_sz;
 
-        MPIR_STATUS_SET_COUNT(rreq->status, done);
+            /* FIXME: optimize iov processing part */
+
+            /* set lmt counter */
+            MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_cntr) = 0;
+
+            for (i = 0; i < iov_len && rem > 0; i++) {
+                curr_len = MPL_MIN(rem, iov[i].iov_len);
+                num_reads = ((curr_len - 1) / MPIDI_Global.max_send) + 1;
+                MPIDI_OFI_AMREQUEST_HDR(rreq, lmt_cntr) += num_reads;
+                rem -= curr_len;
+            }
+
+            done = 0;
+            rem = in_data_sz;
+
+            for (i = 0; i < iov_len && rem > 0; i++) {
+                curr_len = MPL_MIN(rem, iov[i].iov_len);
+                MPIDI_OFI_do_rdma_read(iov[i].iov_base, lmt_msg->src_offset + done,
+                                       curr_len, lmt_msg->context_id, lmt_msg->src_rank, rreq);
+                rem -= curr_len;
+                done += curr_len;
+            }
+
+            if (rem) {
+                rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
+            } else {
+                rreq->status.MPI_ERROR = MPI_SUCCESS;
+            }
+
+            MPIR_STATUS_SET_COUNT(rreq->status, done);
+        }
     }
 
   fn_exit:
@@ -363,35 +402,5 @@ static inline int MPIDI_OFI_handle_lmt_ack(MPIDI_OFI_am_header_t * msg_hdr)
   fn_fail:
     goto fn_exit;
 }
-
-#undef FUNCNAME
-#define FUNCNAME MPIDI_OFI_dispatch_ack
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-static inline int MPIDI_OFI_dispatch_ack(int rank, int context_id, uint64_t sreq_ptr, int am_type)
-{
-    int mpi_errno = MPI_SUCCESS;
-    MPIDI_OFI_ack_msg_t msg;
-    MPIR_Comm *comm;
-
-    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_OFI_DISPATCH_ACK);
-    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_OFI_DISPATCH_ACK);
-
-    comm = MPIDI_CH4U_context_id_to_comm(context_id);
-
-    msg.hdr.am_hdr_sz = sizeof(msg.pyld);
-    msg.hdr.data_sz = 0;
-    msg.hdr.am_type = am_type;
-    msg.pyld.sreq_ptr = sreq_ptr;
-    MPIDI_OFI_CALL_RETRY_AM(fi_inject(MPIDI_Global.ctx[0].tx, &msg, sizeof(msg),
-                                      MPIDI_OFI_comm_to_phys(comm, rank)),
-                            FALSE /* no lock */ , inject);
-  fn_exit:
-    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_OFI_DISPATCH_ACK);
-    return mpi_errno;
-  fn_fail:
-    goto fn_exit;
-}
-
 
 #endif /* OFI_AM_EVENTS_H_INCLUDED */
