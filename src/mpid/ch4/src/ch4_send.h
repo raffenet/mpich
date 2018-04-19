@@ -26,7 +26,6 @@ MPL_STATIC_INLINE_PREFIX int MPID_Send(const void *buf,
                                         MPIR_Request ** request)
 {
     int mpi_errno;
-    int ep_idx;
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPID_SEND);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPID_SEND);
 

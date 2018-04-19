@@ -1231,11 +1231,12 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_work_queues_init(MPIR_Comm *comm) {
     /* FIXME: currently we assume round robin. Leter, we should create queue-to-ep mapping types. */
 
     for (i = 0; i < comm->dev.nqueues; i++) {
-        int ep_idx = i % MPIDI_CH4_Global.n_netmod_eps;
+        int ep_idx;
+        MPIDI_find_tag_ep(comm, 0, 0, &ep_idx);
         MPIDI_workq_init(&comm->dev.work_queues[i].pend_ops);
-        MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[i]);
-        MPL_DL_APPEND(MPIDI_CH4_Global.ep_queues[i], &comm->dev.work_queues[i]);
-        MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[i]);
+        MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+        MPL_DL_APPEND(MPIDI_CH4_Global.ep_queues[ep_idx], &comm->dev.work_queues[i]);
+        MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
     }
 }
 

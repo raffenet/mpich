@@ -746,8 +746,7 @@ static inline void MPIDI_find_tag_ep(MPIR_Comm* comm, int target_rank, int tag, 
 #if 0
     *ep_idx = ((comm->context_id + target_rank + tag) % MPIDI_CH4_Global.n_netmod_eps) & INT_MAX;
 #else
-    // *ep_idx = 0;
-    *ep_idx = (MPIR_CONTEXT_READ_FIELD(PREFIX, comm->context_id) % MPIDI_CH4_Global.n_netmod_eps) & INT_MAX;
+    *ep_idx = MPIR_CONTEXT_READ_FIELD(PREFIX, comm->context_id) % MPIDI_CH4_Global.n_netmod_eps;
 #endif
     MPIR_Assert(*ep_idx >= 0);
 }
