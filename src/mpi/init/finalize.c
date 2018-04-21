@@ -156,6 +156,9 @@ int MPI_Finalize( void )
     
     /* ... body of routine ... */
 
+    if(ENABLE_PVAR_P2PWORKQ || ENABLE_PVAR_RMAWORKQ)
+        MPIR_T_stop_trace();
+
     /* If the user requested for asynchronous progress, we need to
      * shutdown the progress thread */
     if (MPIR_async_thread_initialized) {

@@ -388,6 +388,8 @@ AC_ARG_ENABLE([mpit_pvars],
                       including (Default is "none"):
         none     - No performance info recorded
         recvq    - All message queue-related
+        p2pworkq - Point-to-point workq-related
+        rmaworkq - RMA workq-related
         nem      - All nemesis-related
         rma      - All rma-related
         all      - All variables above
@@ -1847,6 +1849,8 @@ for var in $enable_mpit_pvars ; do
     AS_CASE(["$var"],
             [nem],[enable_pvar_nem=yes],
             [recvq],[enable_pvar_recvq=yes],
+            [p2pworkq],[enable_pvar_p2pworkq=yes],
+            [rmaworkq],[enable_pvar_rmaworkq=yes],
             [rma],[enable_pvar_rma=yes],
 	    [dims],[enable_pvar_dims=yes],
             [all|yes],
@@ -1877,6 +1881,22 @@ else
 fi
 AC_DEFINE_UNQUOTED(ENABLE_PVAR_RECVQ,$status_recvq_pvars,
           [Define to 1 to enable message receive queue-related MPI_T performance variables])
+
+if test -n "$enable_pvar_p2pworkq" ; then
+    status_p2pworkq_pvars=1
+else
+    status_p2pworkq_pvars=0
+fi
+AC_DEFINE_UNQUOTED(ENABLE_PVAR_P2PWORKQ, $status_p2pworkq_pvars,
+          [Define to 1 to enable point-to-point workq-related MPI_T performance variables])
+
+if test -n "$enable_pvar_rmaworkq" ; then
+    status_rmaworkq_pvars=1
+else
+    status_rmaworkq_pvars=0
+fi
+AC_DEFINE_UNQUOTED(ENABLE_PVAR_RMAWORKQ, $status_rmaworkq_pvars,
+          [Define to 1 to enable RMA workq-related MPI_T performance variables])
 
 if test -n "$enable_pvar_rma" ; then
     status_rma_pvars=1

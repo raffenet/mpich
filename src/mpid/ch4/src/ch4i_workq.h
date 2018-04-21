@@ -18,30 +18,38 @@ extern double MPIDI_rma_enqueue_time;
 extern double MPIDI_rma_progress_time;
 extern double MPIDI_rma_issue_pend_time;
 
+static inline double get_wtime() {
+    double d;
+    MPID_Time_t t;
+    MPID_Wtime(&t);
+    MPID_Wtime_todouble(&t, &d);
+    return d;
+}
+
 #if defined(MPIDI_WORKQ_PROFILE)
-#define MPIDI_WORKQ_PT2PT_ENQUEUE_START  double enqueue_t1 = MPI_Wtime();
+#define MPIDI_WORKQ_PT2PT_ENQUEUE_START  double enqueue_t1 = get_wtime();
 #define MPIDI_WORKQ_PT2PT_ENQUEUE_STOP                          \
     do {                                                        \
-        double enqueue_t2 = MPI_Wtime();                        \
+        double enqueue_t2 = get_wtime();                        \
         MPIDI_pt2pt_enqueue_time += (enqueue_t2 - enqueue_t1);  \
     }while(0)
-#define MPIDI_WORKQ_PROGRESS_START double progress_t1 = MPI_Wtime();
+#define MPIDI_WORKQ_PROGRESS_START double progress_t1 = get_wtime();
 #define MPIDI_WORKQ_PROGRESS_STOP                                 \
     do {                                                                \
-        double progress_t2 = MPI_Wtime();                               \
+        double progress_t2 = get_wtime();                               \
         MPIDI_pt2pt_progress_time += (progress_t2 - progress_t1);       \
     }while(0)
-#define MPIDI_WORKQ_ISSUE_START    double issue_t1 = MPI_Wtime();
+#define MPIDI_WORKQ_ISSUE_START    double issue_t1 = get_wtime();
 #define MPIDI_WORKQ_ISSUE_STOP                            \
     do {                                                        \
-        double issue_t2 = MPI_Wtime();                          \
+        double issue_t2 = get_wtime();                          \
         MPIDI_pt2pt_issue_pend_time += (issue_t2 - issue_t1);   \
     }while(0)
 
-#define MPIDI_WORKQ_RMA_ENQUEUE_START    double enqueue_t1 = MPI_Wtime();
+#define MPIDI_WORKQ_RMA_ENQUEUE_START    double enqueue_t1 = get_wtime();
 #define MPIDI_WORKQ_RMA_ENQUEUE_STOP                            \
     do {                                                        \
-        double enqueue_t2 = MPI_Wtime();                        \
+        double enqueue_t2 = get_wtime();                        \
         MPIDI_rma_enqueue_time += (enqueue_t2 - enqueue_t1);    \
     }while(0)
 #else /*!defined(MPIDI_WORKQ_PROFILE)*/

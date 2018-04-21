@@ -445,4 +445,17 @@ int MPIR_T_category_get_cvars_impl(int cat_index, int len, int indices[]);
 int MPIR_T_category_get_pvars_impl(int cat_index, int len, int indices[]);
 int MPIR_T_category_get_categories_impl(int cat_index, int len, int indices[]);
 
+#if defined (MPIR_PVAR_SAMPLE_TRACING)
+
+#include<signal.h>
+#include<time.h>
+
+#include "sampling.h"
+
+#endif
+
+void MPIR_T_init_trace();
+void MPIR_T_stop_trace();
+
+
 #endif  /* MPIT_H_INCLUDED */
