@@ -100,6 +100,7 @@ void PVAR_TRACE_timer_handler(int sig, siginfo_t *si, void *uc) {
 
 void MPIR_T_init_trace() {
     char *s;
+    int ret;
     s = getenv("MPIR_CVAR_PVAR_TRACE_INTERVAL");
     if(s) PVAR_TRACE_interval = atoll(s);
     else  PVAR_TRACE_interval = MPIR_CVAR_PVAR_TRACE_INTERVAL_DEFAULT;
@@ -110,20 +111,31 @@ void MPIR_T_init_trace() {
     char filename[30];
     sprintf(filename, "%d_%d.csv", my_rank, my_pid);
     PVAR_TRACE_fd = fopen(filename, "w");
-    fprintf(PVAR_TRACE_fd, "time");
+    assert(PVAR_TRACE_fd != NULL);
+    ret = fprintf(PVAR_TRACE_fd, "time");
+    assert(ret >= 0);
     if(ENABLE_PVAR_P2PWORKQ)
         fprintf(PVAR_TRACE_fd, ",p2p_enq_time,p2p_progress_time,p2p_issue_pend_time");
     if(ENABLE_PVAR_RMAWORKQ)
         fprintf(PVAR_TRACE_fd, ",rma_enq_time,rma_progress_time,rma_issue_pend_time");
     fprintf(PVAR_TRACE_fd, "\n");
+    fflush(PVAR_TRACE_fd);
     PVAR_TRACE_time_prev = PMPI_Wtime() ;
     start_sampling(&PVAR_TRACE_timer, PVAR_TRACE_interval, PVAR_TRACE_timer_handler);
 }
 
 void PVAR_TRACE_finalize() {
+    int ret;
     PVAR_TRACE_dump_trace();
     free(PVAR_TRACE_buffer);
-    fclose(PVAR_TRACE_fd);
+    ret = fclose(PVAR_TRACE_fd);
+    if (ret != 0) {
+        if (ret == EBADF) {
+            printf("fclose: %p is not a valid file descriptor\n", PVAR_TRACE_fd);
+        } else {
+            printf("fclose returned %s\n", strerror(errno));
+        }
+    }
 }
 
 void MPIR_T_stop_trace() {
