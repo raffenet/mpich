@@ -281,7 +281,7 @@ typedef struct MPIDI_CH4_Global_t {
     int n_netmod_eps;
     int next_ep_idx;
     MPID_Thread_mutex_t *ep_locks;
-    MPIDI_workq_list_t **ep_queues;
+    MPIDI_workq_t *ep_queues;
     /* Per-endpoint queues for saving pending operations to issue */
     int progress_hook_id;
 } MPIDI_CH4_Global_t;

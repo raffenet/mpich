@@ -203,8 +203,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Comm_create_hook(MPIR_Comm * comm)
         }
     }
 
-    MPIDI_work_queues_init(comm);
-
   fn_exit:
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_COMM_CREATE_HOOK);
     return mpi_errno;
@@ -224,11 +222,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Comm_free_hook(MPIR_Comm * comm)
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_COMM_FREE_HOOK);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_COMM_FREE_HOOK);
 
-    for (i = 0; i < comm->dev.nqueues; i++) {
-        MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[i]);
-        MPL_DL_DELETE(MPIDI_CH4_Global.ep_queues[i], &comm->dev.work_queues[i]);
-        MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[i]);
-    }
     MPL_free(comm->dev.work_queues);
 
     /* release ref to avts */

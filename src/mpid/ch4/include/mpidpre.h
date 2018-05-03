@@ -296,7 +296,7 @@ typedef struct {
     MPIDI_NM_WIN_DECL} netmod;
 
     int nqueues;
-    MPIDI_workq_list_t *work_queues;
+    MPIDI_workq_t *work_queues;
 } MPIDI_Devwin_t;
 
 #define MPIDI_CH4U_WIN(win,field)        (((win)->dev.ch4u).field)
@@ -391,7 +391,7 @@ typedef struct MPIDI_Devcomm_t {
     } ch4;
 
     int nqueues;
-    MPIDI_workq_list_t *work_queues;
+    MPIDI_workq_t *work_queues;
     int ep_idx;
 } MPIDI_Devcomm_t;
 #define MPIDI_CH4U_COMM(comm,field) ((comm)->dev.ch4.ch4u).field

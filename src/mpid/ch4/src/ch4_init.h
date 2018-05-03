@@ -211,7 +211,7 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
     }
 
     MPIDI_CH4_Global.ep_locks = (MPID_Thread_mutex_t*) MPL_malloc(MPIDI_CH4_Global.n_netmod_eps * sizeof(MPID_Thread_mutex_t));
-    MPIDI_CH4_Global.ep_queues = (MPIDI_workq_list_t**) MPL_malloc(MPIDI_CH4_Global.n_netmod_eps * sizeof(MPIDI_workq_list_t*));
+    MPIDI_CH4_Global.ep_queues = (MPIDI_workq_t*) MPL_malloc(MPIDI_CH4_Global.n_netmod_eps * sizeof(MPIDI_workq_t));
 
     int i;
     for (i = 0; i < MPIDI_CH4_Global.n_netmod_eps; i++) {
@@ -219,7 +219,7 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
         if (mpi_errno != MPI_SUCCESS) {
             MPIR_ERR_POPFATAL(mpi_errno);
         }
-        MPIDI_CH4_Global.ep_queues[i] = NULL;
+        MPIDI_workq_init(&MPIDI_CH4_Global.ep_queues[i]);
     }
 
     MPID_Progress_register(MPIDI_workq_global_progress, &MPIDI_CH4_Global.progress_hook_id);

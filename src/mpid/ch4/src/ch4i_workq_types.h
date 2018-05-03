@@ -69,9 +69,4 @@ struct MPIDI_workq_elemt {
     };
 };
 
-struct MPIDI_workq_list {
-    MPIDI_workq_t pend_ops;
-    MPIDI_workq_list_t *next, *prev;
-};
-
 #endif /* CH4I_WORKQ_TYPES_H_INCLUDED */
