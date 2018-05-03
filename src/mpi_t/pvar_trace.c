@@ -17,12 +17,15 @@ long long           PVAR_TRACE_interval;
 unsigned            PVAR_TRACE_index;
 double              PVAR_TRACE_time_prev;
 
-double MPIDI_pt2pt_enqueue_time;
-double MPIDI_pt2pt_progress_time;
-double MPIDI_pt2pt_issue_pend_time;
-double MPIDI_rma_enqueue_time;
-double MPIDI_rma_progress_time;
-double MPIDI_rma_issue_pend_time;
+double MPIDI_pt2pt_enqueue_time = 0.0;
+double MPIDI_pt2pt_progress_time = 0.0;
+double MPIDI_pt2pt_issue_pend_time = 0.0;
+double MPIDI_rma_enqueue_time = 0.0;
+double MPIDI_rma_progress_time = 0.0;
+double MPIDI_rma_issue_pend_time = 0.0;
+unsigned long MPIDI_nqueue_traversd = 0;
+unsigned long MPIDI_nqueue_nonempty = 0;
+
 
 struct PVAR_TRACE_entry {
     double             timestamp;
@@ -35,6 +38,10 @@ struct PVAR_TRACE_entry {
     double rma_enqueue_time;
     double rma_progress_time;
     double rma_issue_pend_time;
+#endif
+#if (ENABLE_PVAR_P2PWORKQ || ENABLE_PVAR_RMAWORKQ)
+    unsigned long nqueue_traversd;
+    unsigned long nqueue_nonempty;
 #endif
 };
 
@@ -58,6 +65,10 @@ static void PVAR_TRACE_dump_trace() {
         fprintf(PVAR_TRACE_fd, ",%.3f",   PVAR_TRACE_buffer[i].rma_progress_time*1e3);
         fprintf(PVAR_TRACE_fd, ",%.3f",   PVAR_TRACE_buffer[i].rma_issue_pend_time;*1e3);
 #endif
+#if (ENABLE_PVAR_P2PWORKQ || ENABLE_PVAR_RMAWORKQ)
+        double queue_list_occupancy = (double)PVAR_TRACE_buffer[i].nqueue_nonempty/(double)PVAR_TRACE_buffer[i].nqueue_traversd;
+        fprintf(PVAR_TRACE_fd, ",%.3f", queue_list_occupancy);
+#endif
         fprintf(PVAR_TRACE_fd, "\n");
     }
     memset(PVAR_TRACE_buffer,            0.0, MPIR_CVAR_TRACE_BUFFER_LENGTH*sizeof(struct PVAR_TRACE_entry));
@@ -77,7 +88,7 @@ void PVAR_TRACE_timer_handler(int sig, siginfo_t *si, void *uc) {
         cur_entry.p2p_progress_time                               = MPIDI_pt2pt_progress_time;
         cur_entry.p2p_issue_pend_time                             = MPIDI_pt2pt_issue_pend_time;
         PVAR_TRACE_buffer[PVAR_TRACE_index].p2p_enqueue_time      = cur_entry.p2p_enqueue_time    - old_entry.p2p_enqueue_time;
-        PVAR_TRACE_buffer[PVAR_TRACE_index].p2p_progress_time     = cur_entry.p2p_progress_time   - old_entry.p2p_progress_time;  
+        PVAR_TRACE_buffer[PVAR_TRACE_index].p2p_progress_time     = cur_entry.p2p_progress_time   - old_entry.p2p_progress_time;
         PVAR_TRACE_buffer[PVAR_TRACE_index].p2p_issue_pend_time   = cur_entry.p2p_issue_pend_time - old_entry.p2p_issue_pend_time;
 #endif
 #if ENABLE_PVAR_RMAWORKQ
@@ -85,8 +96,14 @@ void PVAR_TRACE_timer_handler(int sig, siginfo_t *si, void *uc) {
         cur_entry.rma_progress_time                               = MPIDI_rma_progress_time;
         cur_entry.rma_issue_pend_time                             = MPIDI_rma_issue_pend_time;
         PVAR_TRACE_buffer[PVAR_TRACE_index].rma_enqueue_time      = cur_entry.rma_enqueue_time    - old_entry.rma_enqueue_time;
-        PVAR_TRACE_buffer[PVAR_TRACE_index].rma_progress_time     = cur_entry.rma_progress_time   - old_entry.rma_progress_time;  
+        PVAR_TRACE_buffer[PVAR_TRACE_index].rma_progress_time     = cur_entry.rma_progress_time   - old_entry.rma_progress_time;
         PVAR_TRACE_buffer[PVAR_TRACE_index].rma_issue_pend_time   = cur_entry.rma_issue_pend_time - old_entry.rma_issue_pend_time;
+#endif
+#if (ENABLE_PVAR_P2PWORKQ || ENABLE_PVAR_RMAWORKQ)
+        cur_entry.nqueue_traversd                                 = MPIDI_nqueue_traversd;
+        cur_entry.nqueue_nonempty                                 = MPIDI_nqueue_nonempty;
+        PVAR_TRACE_buffer[PVAR_TRACE_index].nqueue_traversd       = cur_entry.nqueue_traversd     - old_entry.nqueue_traversd;
+        PVAR_TRACE_buffer[PVAR_TRACE_index].nqueue_nonempty       = cur_entry.nqueue_nonempty     - old_entry.nqueue_nonempty;
 #endif
         memcpy(&old_entry, &cur_entry, sizeof(struct PVAR_TRACE_entry));
         PVAR_TRACE_index++;

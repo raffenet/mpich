@@ -17,6 +17,8 @@ extern double MPIDI_pt2pt_issue_pend_time;
 extern double MPIDI_rma_enqueue_time;
 extern double MPIDI_rma_progress_time;
 extern double MPIDI_rma_issue_pend_time;
+extern unsigned long MPIDI_nqueue_traversd;
+extern unsigned long MPIDI_nqueue_nonempty;
 
 static inline double get_wtime() {
     double d;
@@ -38,6 +40,11 @@ static inline double get_wtime() {
     do {                                                                \
         double progress_t2 = get_wtime();                               \
         MPIDI_pt2pt_progress_time += (progress_t2 - progress_t1);       \
+    }while(0)
+#define MPIDI_WORKQ_QUEUE_TRAVERSAL(workq_elemt)                        \
+    do {                                                                \
+        MPIDI_nqueue_traversd++;                                        \
+        if (workq_elemt != NULL)  MPIDI_nqueue_nonempty++;              \
     }while(0)
 #define MPIDI_WORKQ_ISSUE_START    double issue_t1 = get_wtime();
 #define MPIDI_WORKQ_ISSUE_STOP                            \
@@ -126,6 +133,7 @@ static inline int MPIDI_workq_ep_progress_body(int ep_idx)
     MPIDI_WORKQ_PROGRESS_START;
     MPL_DL_FOREACH(MPIDI_CH4_Global.ep_queues[ep_idx], cur_workq) {
         MPIDI_workq_dequeue(&cur_workq->pend_ops, (void**)&workq_elemt);
+        MPIDI_WORKQ_QUEUE_TRAVERSAL(workq_elemt);
         while(workq_elemt != NULL) {
             MPIDI_WORKQ_ISSUE_START;
             switch(workq_elemt->op) {
