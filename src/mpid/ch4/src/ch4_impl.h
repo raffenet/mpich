@@ -762,4 +762,14 @@ static inline void MPIDI_find_rma_ep(MPIR_Win* win, int target_rank, int* ep_idx
     MPIR_Assert(*ep_idx >= 0);
 }
 
+static inline void MPIDI_find_tag_bucket(MPIR_Comm* comm, int target_rank, int tag, int* bucket_idx)
+{
+    *bucket_idx = 0;
+}
+
+static inline void MPIDI_find_rma_bucket(MPIR_Win* win, int target_rank, int* bucket_idx)
+{
+    *bucket_idx = 0;
+}
+
 #endif /* CH4_IMPL_H_INCLUDED */

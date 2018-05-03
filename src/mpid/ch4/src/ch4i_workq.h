@@ -84,6 +84,7 @@ static inline void MPIDI_workq_pt2pt_enqueue_body(MPIDI_workq_op_t op,
                                                   MPI_Status *status,
                                                   MPIR_Request *request)
 {
+    int bucket_idx;
     MPIDI_workq_elemt_t* pt2pt_elemt = NULL;
     pt2pt_elemt = MPL_malloc(sizeof (*pt2pt_elemt));
     pt2pt_elemt->op       = op;
@@ -97,7 +98,8 @@ static inline void MPIDI_workq_pt2pt_enqueue_body(MPIDI_workq_op_t op,
     pt2pt_elemt->context_offset = context_offset;
     pt2pt_elemt->status  = status;
     pt2pt_elemt->request  = request;
-    MPIDI_workq_enqueue(&MPIDI_CH4_Global.ep_queues[ep_idx], pt2pt_elemt);
+    MPIDI_find_tag_bucket(comm_ptr, rank, tag, &bucket_idx);
+    MPIDI_workq_enqueue(&MPIDI_CH4_Global.ep_queues[ep_idx], pt2pt_elemt, bucket_idx);
 }
 
 static inline void MPIDI_workq_rma_enqueue_body(MPIDI_workq_op_t op,
@@ -111,6 +113,7 @@ static inline void MPIDI_workq_rma_enqueue_body(MPIDI_workq_op_t op,
                                                 MPIR_Win *win_ptr,
                                                 int ep_idx)
 {
+    int bucket_idx;
     MPIDI_workq_elemt_t* rma_elemt = NULL;
     rma_elemt = MPL_malloc(sizeof (*rma_elemt));
     rma_elemt->op               = op;
@@ -122,7 +125,8 @@ static inline void MPIDI_workq_rma_enqueue_body(MPIDI_workq_op_t op,
     rma_elemt->target_count     = target_count;
     rma_elemt->target_datatype  = target_datatype;
     rma_elemt->win_ptr          = win_ptr;
-    MPIDI_workq_enqueue(&MPIDI_CH4_Global.ep_queues[ep_idx], rma_elemt);
+    MPIDI_find_rma_bucket(win_ptr, target_rank, &bucket_idx);
+    MPIDI_workq_enqueue(&MPIDI_CH4_Global.ep_queues[ep_idx], rma_elemt, bucket_idx);
 }
 
 static inline int MPIDI_workq_ep_progress_body(int ep_idx)

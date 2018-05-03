@@ -44,6 +44,16 @@ cvars:
       description : >-
         If non-empty, this cvar specifies which shm module to use
 
+    - name        : MPIR_CVAR_CH4_WORKQ_NBUCKETS
+      category    : CH4
+      type        : int
+      default     : 16
+      class       : device
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_ALL_EQ
+      description : >-
+        If non-empty, this cvar specifies the number buckets per workq
+
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 
@@ -219,7 +229,7 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
         if (mpi_errno != MPI_SUCCESS) {
             MPIR_ERR_POPFATAL(mpi_errno);
         }
-        MPIDI_workq_init(&MPIDI_CH4_Global.ep_queues[i]);
+        MPIDI_workq_init(&MPIDI_CH4_Global.ep_queues[i], MPIR_CVAR_CH4_WORKQ_NBUCKETS);
     }
 
     MPID_Progress_register(MPIDI_workq_global_progress, &MPIDI_CH4_Global.progress_hook_id);
