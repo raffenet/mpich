@@ -1,0 +1,3 @@
+[submodule "src/izem"]
+	path = src/izem
+	url = https://github.com/pmodels/izem
