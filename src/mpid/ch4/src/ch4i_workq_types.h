@@ -25,6 +25,13 @@
 #define MPIDI_workq_init(q, n)          zm_glqueue_init(q)
 #define MPIDI_workq_enqueue(q, d, i)    zm_glqueue_enqueue(q, d)
 #define MPIDI_workq_dequeue(q, d)       zm_glqueue_dequeue(q, d)
+#elif defined(MPIDI_USE_MPBQUEUE)
+#include <queue/zm_mpbqueue.h>
+#define MPIDI_workq_t                   struct zm_mpbqueue
+#define MPIDI_workq_init(q, n)          zm_mpbqueue_init(q, n)
+#define MPIDI_workq_enqueue(q, d, i)    zm_mpbqueue_enqueue(q, d, i)
+#define MPIDI_workq_dequeue(q, d)       zm_mpbqueue_dequeue(q, d)
+
 #else
 /* Stub implementation to make it compile */
 typedef void *MPIDI_workq_t;
