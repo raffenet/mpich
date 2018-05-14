@@ -64,6 +64,7 @@ static inline double get_wtime() {
 #define MPIDI_WORKQ_PT2PT_ENQUEUE_STOP
 #define MPIDI_WORKQ_PROGRESS_START
 #define MPIDI_WORKQ_PROGRESS_STOP
+#define MPIDI_WORKQ_QUEUE_TRAVERSAL(workq_elemt)
 #define MPIDI_WORKQ_ISSUE_START
 #define MPIDI_WORKQ_ISSUE_STOP
 
