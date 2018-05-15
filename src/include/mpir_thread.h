@@ -73,7 +73,6 @@ extern MPID_Thread_mutex_t MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX;
 #endif
 
 #if MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ
-extern MPID_Thread_mutex_t MPIR_THREAD_POBJ_HANDLE_MUTEX;
 extern MPID_Thread_mutex_t MPIR_THREAD_POBJ_MSGQ_MUTEX;
 extern MPID_Thread_mutex_t MPIR_THREAD_POBJ_COMPLETION_MUTEX;
 extern MPID_Thread_mutex_t MPIR_THREAD_POBJ_CTX_MUTEX;
@@ -81,10 +80,6 @@ extern MPID_Thread_mutex_t MPIR_THREAD_POBJ_PMI_MUTEX;
 
 #define MPIR_THREAD_POBJ_COMM_MUTEX(_comm_ptr) _comm_ptr->mutex
 #define MPIR_THREAD_POBJ_WIN_MUTEX(_win_ptr)   _win_ptr->mutex
-#endif
-
-#if MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP
-extern MPID_Thread_mutex_t MPIR_THREAD_POBJ_HANDLE_MUTEX;
 #endif
 
 #endif /* MPIR_THREAD_H_INCLUDED */

@@ -8,6 +8,7 @@
 #define MPIR_OBJECTS_H_INCLUDED
 
 #include "mpichconf.h"
+#include "mpid_thread.h"
 
 /*TDSOverview.tex
 
@@ -404,6 +405,10 @@ typedef struct MPIR_Object_alloc_t {
     void               *direct;         /* Pointer to direct block, used 
                                            for allocation */
     int                direct_size;     /* Size of direct block */
+#if (MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ) || \
+    (MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP)
+    MPID_Thread_mutex_t lock;           /**/
+#endif
 } MPIR_Object_alloc_t;
 static inline void *MPIR_Handle_obj_alloc(MPIR_Object_alloc_t *);
 static inline void *MPIR_Handle_obj_alloc_unsafe(MPIR_Object_alloc_t *);

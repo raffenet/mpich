@@ -173,16 +173,77 @@ MPID_Thread_mutex_t MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX;
 #endif
 
 #if MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ
-MPID_Thread_mutex_t MPIR_THREAD_POBJ_HANDLE_MUTEX;
 MPID_Thread_mutex_t MPIR_THREAD_POBJ_MSGQ_MUTEX;
 MPID_Thread_mutex_t MPIR_THREAD_POBJ_COMPLETION_MUTEX;
 MPID_Thread_mutex_t MPIR_THREAD_POBJ_CTX_MUTEX;
 MPID_Thread_mutex_t MPIR_THREAD_POBJ_PMI_MUTEX;
 #endif
 
-#if MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP
-MPID_Thread_mutex_t MPIR_THREAD_POBJ_HANDLE_MUTEX;
-#endif
+#if (MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ) || \
+    (MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP)
+
+extern MPIR_Object_alloc_t MPII_Keyval_mem;
+extern MPIR_Object_alloc_t MPID_Attr_mem;
+extern MPIR_Object_alloc_t MPIR_Grequest_class_mem;
+
+#define CREATE_MEM_LOCKS(err)                                       \
+do {                                                                \
+    MPID_Thread_mutex_create(&MPII_Keyval_mem.lock, &err);          \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPID_Attr_mem.lock, &err);            \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Op_mem.lock, &err);              \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Comm_mem.lock, &err);            \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Datatype_mem.lock, &err);        \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Errhandler_mem.lock, &err);      \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Group_mem.lock, &err);           \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Info_mem.lock, &err);            \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Grequest_class_mem.lock, &err);  \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Request_mem.lock, &err);         \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_create(&MPIR_Win_mem.lock, &err);             \
+    MPIR_Assert(err == 0);                                          \
+} while(0)
+
+#define DESTROY_MEM_LOCKS(err)                                      \
+do {                                                                \
+    MPID_Thread_mutex_destroy(&MPII_Keyval_mem.lock, &err);         \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPID_Attr_mem.lock, &err);           \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Op_mem.lock, &err);             \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Comm_mem.lock, &err);           \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Datatype_mem.lock, &err);       \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Errhandler_mem.lock, &err);     \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Group_mem.lock, &err);          \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Info_mem.lock, &err);           \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Grequest_class_mem.lock, &err); \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Request_mem.lock, &err);        \
+    MPIR_Assert(err == 0);                                          \
+    MPID_Thread_mutex_destroy(&MPIR_Win_mem.lock, &err);            \
+    MPIR_Assert(err == 0);                                          \
+} while(0)
+
+#else
+
+#define CREATE_MEM_LOCKS(err)
+#define DESTROY_MEM_LOCKS(err)
+
+#endif /* POBJ/EP GRANULARITY */
 
 /* These routine handle any thread initialization that my be required */
 #undef FUNCNAME
@@ -202,8 +263,7 @@ static int thread_cs_init( void )
     /* MPICH_THREAD_GRANULARITY__POBJ: Multiple locks */
     MPID_Thread_mutex_create(&MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX, &err);
     MPIR_Assert(err == 0);
-    MPID_Thread_mutex_create(&MPIR_THREAD_POBJ_HANDLE_MUTEX, &err);
-    MPIR_Assert(err == 0);
+    CREATE_MEM_LOCKS(err);
     MPID_Thread_mutex_create(&MPIR_THREAD_POBJ_MSGQ_MUTEX, &err);
     MPIR_Assert(err == 0);
     MPID_Thread_mutex_create(&MPIR_THREAD_POBJ_COMPLETION_MUTEX, &err);
@@ -216,8 +276,7 @@ static int thread_cs_init( void )
 #elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP
     MPID_Thread_mutex_create(&MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX, &err);
     MPIR_Assert(err == 0);
-    MPID_Thread_mutex_create(&MPIR_THREAD_POBJ_HANDLE_MUTEX, &err);
-    MPIR_Assert(err == 0);
+    CREATE_MEM_LOCKS(err);
 
 #elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__LOCKFREE
 /* Updates to shared data and access to shared services is handled without 
@@ -256,8 +315,7 @@ int MPIR_Thread_CS_Finalize( void )
      * one for each logical class (e.g., each type of object) */
     MPID_Thread_mutex_destroy(&MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX, &err);
     MPIR_Assert(err == 0);
-    MPID_Thread_mutex_destroy(&MPIR_THREAD_POBJ_HANDLE_MUTEX, &err);
-    MPIR_Assert(err == 0);
+    DESTROY_MEM_LOCKS(err);
     MPID_Thread_mutex_destroy(&MPIR_THREAD_POBJ_MSGQ_MUTEX, &err);
     MPIR_Assert(err == 0);
     MPID_Thread_mutex_destroy(&MPIR_THREAD_POBJ_COMPLETION_MUTEX, &err);
@@ -270,8 +328,7 @@ int MPIR_Thread_CS_Finalize( void )
 #elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP
     MPID_Thread_mutex_destroy(&MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX, &err);
     MPIR_Assert(err == 0);
-    MPID_Thread_mutex_destroy(&MPIR_THREAD_POBJ_HANDLE_MUTEX, &err);
-    MPIR_Assert(err == 0);
+    DESTROY_MEM_LOCKS(err);
 
 #elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__LOCKFREE
 /* Updates to shared data and access to shared services is handled without 
