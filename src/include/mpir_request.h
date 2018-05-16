@@ -154,16 +154,16 @@ struct MPIR_Request {
 };
 
 #define MPIR_REQUEST_PREALLOC 8
+#define MPIR_REQUEST_MEM_NBUCKETS 64
 
-extern MPIR_Object_alloc_t MPIR_Request_mem;
+extern MPIR_Object_alloc_t MPIR_Request_mem[];
 /* Preallocated request objects */
-extern MPIR_Request MPIR_Request_direct[];
+extern MPIR_Request MPIR_Request_direct[MPIR_REQUEST_MEM_NBUCKETS][MPIR_REQUEST_PREALLOC];
 
-static inline MPIR_Request *MPIR_Request_create(MPIR_Request_kind_t kind)
-{
-    MPIR_Request *req;
+void MPIR_Request_mem_init();
 
-    req = MPIR_Handle_obj_alloc(&MPIR_Request_mem);
+static inline void MPIR_Request_init(MPIR_Request *req, MPIR_Request_kind_t kind){
+
     if (req != NULL) {
 	MPL_DBG_MSG_P(MPIR_DBG_REQUEST,VERBOSE,
                       "allocated request, handle=0x%08x", req->handle);
@@ -214,6 +214,26 @@ static inline MPIR_Request *MPIR_Request_create(MPIR_Request_kind_t kind)
 	/* FIXME: This fails to fail if debugging is turned off */
 	MPL_DBG_MSG(MPIR_DBG_REQUEST,TYPICAL,"unable to allocate a request");
     }
+}
+
+static inline MPIR_Request *MPIR_Request_create(MPIR_Request_kind_t kind)
+{
+    MPIR_Request *req;
+
+    req = MPIR_Handle_obj_alloc(&MPIR_Request_mem[0]);
+    MPIR_Request_init(req, kind);
+
+
+    return req;
+}
+
+static inline MPIR_Request *MPIR_Request_create_buck(MPIR_Request_kind_t kind, int bucket)
+{
+    MPIR_Request *req;
+
+    req = MPIR_Handle_obj_alloc(&MPIR_Request_mem[bucket]);
+    MPIR_Request_init(req, kind);
+
 
     return req;
 }
@@ -226,7 +246,7 @@ static inline MPIR_Request *MPIR_Request_create(MPIR_Request_kind_t kind)
 
 static inline void MPIR_Request_free(MPIR_Request *req)
 {
-    int inuse;
+    int inuse, bucket;
 
     MPIR_Request_release_ref(req, &inuse);
 
@@ -270,11 +290,10 @@ static inline void MPIR_Request_free(MPIR_Request *req)
         }
 
         MPID_Request_destroy_hook(req);
-
-        MPIR_Handle_obj_free(&MPIR_Request_mem, req);
+        bucket = HANDLE_GET_BUCKET(req->handle);
+        MPIR_Handle_obj_free(&MPIR_Request_mem[bucket], req);
     }
 }
-
 int MPIR_Request_complete(MPI_Request *, MPIR_Request *, MPI_Status *, int *);
 int MPIR_Request_get_error(MPIR_Request *);
 int MPIR_Progress_wait_request(MPIR_Request *req);

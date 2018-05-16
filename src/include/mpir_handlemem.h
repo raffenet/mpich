@@ -94,7 +94,7 @@ static inline int MPIR_Handle_free(void *((*indirect)[]), int indirect_size)
 #endif
 
 static inline void *MPIR_Handle_direct_init(void *direct,
-                                            int direct_size, int obj_size, int handle_type)
+                                            int direct_size, int obj_size, int handle_type, int bucket)
 {
     int i;
     MPIR_Handle_common *hptr = 0;
@@ -108,7 +108,7 @@ static inline void *MPIR_Handle_direct_init(void *direct,
         ptr = ptr + obj_size;
         hptr->next = ptr;
         hptr->handle = ((unsigned) HANDLE_KIND_DIRECT << HANDLE_KIND_SHIFT) |
-            (handle_type << HANDLE_MPI_KIND_SHIFT) | i;
+            (handle_type << HANDLE_MPI_KIND_SHIFT) | (bucket << HANDLE_BUCKET_SHIFT) | i;
 
         HANDLE_VG_LABEL(hptr, obj_size, handle_type, 1);
     }
@@ -123,7 +123,7 @@ static inline void *MPIR_Handle_indirect_init(void *(**indirect)[],
                                               int *indirect_size,
                                               int indirect_num_blocks,
                                               int indirect_num_indices,
-                                              int obj_size, int handle_type)
+                                              int obj_size, int handle_type, int bucket)
 {
     void *block_ptr;
     MPIR_Handle_common *hptr = 0;
@@ -160,8 +160,8 @@ static inline void *MPIR_Handle_indirect_init(void *(**indirect)[],
         ptr = ptr + obj_size;
         hptr->next = ptr;
         hptr->handle = ((unsigned) HANDLE_KIND_INDIRECT << HANDLE_KIND_SHIFT) |
-            (handle_type << HANDLE_MPI_KIND_SHIFT) | (*indirect_size << HANDLE_INDIRECT_SHIFT) | i;
-        /* printf("handle=%#x handle_type=%x *indirect_size=%d i=%d\n", hptr->handle, handle_type, *indirect_size, i); */
+            (handle_type << HANDLE_MPI_KIND_SHIFT) | (bucket << HANDLE_BUCKET_SHIFT) | (*indirect_size << HANDLE_INDIRECT_SHIFT) | i;
+        //printf("handle=%#x handle_type=%x bucket=%d *indirect_size=%d i=%d\n", hptr->handle, handle_type, bucket, *indirect_size, i);
 
         HANDLE_VG_LABEL(hptr, obj_size, handle_type, 0);
     }
@@ -213,6 +213,7 @@ Input Parameters:
   locking with a single global mutex and with a mutex specific for handles.
 
   +*/
+
 #undef FUNCNAME
 #define FUNCNAME MPIR_Handle_obj_alloc
 #undef FCNAME
@@ -245,10 +246,11 @@ static inline void *MPIR_Handle_obj_alloc_unsafe(MPIR_Object_alloc_t * objmem)
         /* ptr points to object to allocate */
     }
     else {
-        int objsize, objkind;
+        int objsize, objkind, bucket;
 
         objsize = objmem->size;
         objkind = objmem->kind;
+        bucket = objmem->bucket;
 
         if (!objmem->initialized) {
             MPL_VG_CREATE_MEMPOOL(objmem, 0 /*rzB */ , 0 /*is_zeroed */);
@@ -257,7 +259,7 @@ static inline void *MPIR_Handle_obj_alloc_unsafe(MPIR_Object_alloc_t * objmem)
              * jobs do not need to include any of the Info code if no
              * Info-using routines are used */
             objmem->initialized = 1;
-            ptr = MPIR_Handle_direct_init(objmem->direct, objmem->direct_size, objsize, objkind);
+            ptr = MPIR_Handle_direct_init(objmem->direct, objmem->direct_size, objsize, objkind, bucket);
             if (ptr) {
                 objmem->avail = ptr->next;
             }
@@ -278,7 +280,7 @@ static inline void *MPIR_Handle_obj_alloc_unsafe(MPIR_Object_alloc_t * objmem)
             ptr = MPIR_Handle_indirect_init(&objmem->indirect,
                                             &objmem->indirect_size,
                                             HANDLE_NUM_BLOCKS,
-                                            HANDLE_NUM_INDICES, objsize, objkind);
+                                            HANDLE_NUM_INDICES, objsize, objkind, bucket);
             if (ptr) {
                 objmem->avail = ptr->next;
             }

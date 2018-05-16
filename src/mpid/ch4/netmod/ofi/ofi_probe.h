@@ -68,8 +68,10 @@ static inline int MPIDI_OFI_do_iprobe(int source,
     case MPIDI_OFI_PEEK_NOT_FOUND:
         *flag = 0;
 
-        if (message)
-            MPIR_Handle_obj_free(&MPIR_Request_mem, rreq);
+        if (message) {
+            int bucket = HANDLE_GET_BUCKET(rreq->handle);
+            MPIR_Handle_obj_free(&MPIR_Request_mem[bucket], rreq);
+        }
 
         goto fn_exit;
         break;

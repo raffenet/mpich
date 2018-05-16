@@ -206,8 +206,10 @@ do {                                                                \
     MPIR_Assert(err == 0);                                          \
     MPID_Thread_mutex_create(&MPIR_Grequest_class_mem.lock, &err);  \
     MPIR_Assert(err == 0);                                          \
-    MPID_Thread_mutex_create(&MPIR_Request_mem.lock, &err);         \
-    MPIR_Assert(err == 0);                                          \
+    for(int i = 0; i < MPIR_REQUEST_MEM_NBUCKETS; i++) {            \
+        MPID_Thread_mutex_create(&MPIR_Request_mem[i].lock, &err);  \
+        MPIR_Assert(err == 0);                                      \
+    }                                                               \
     MPID_Thread_mutex_create(&MPIR_Win_mem.lock, &err);             \
     MPIR_Assert(err == 0);                                          \
 } while(0)
@@ -232,8 +234,10 @@ do {                                                                \
     MPIR_Assert(err == 0);                                          \
     MPID_Thread_mutex_destroy(&MPIR_Grequest_class_mem.lock, &err); \
     MPIR_Assert(err == 0);                                          \
-    MPID_Thread_mutex_destroy(&MPIR_Request_mem.lock, &err);        \
-    MPIR_Assert(err == 0);                                          \
+    for(int i = 0; i < MPIR_REQUEST_MEM_NBUCKETS; i++) {            \
+        MPID_Thread_mutex_destroy(&MPIR_Request_mem[i].lock, &err);  \
+        MPIR_Assert(err == 0);                                      \
+    }                                                               \
     MPID_Thread_mutex_destroy(&MPIR_Win_mem.lock, &err);            \
     MPIR_Assert(err == 0);                                          \
 } while(0)
@@ -397,6 +401,8 @@ int MPIR_Init_thread(int * argc, char ***argv, int required, int * provided)
     int exit_init_cs_on_failure = 0;
     MPIR_Info *info_ptr;
 
+
+    MPIR_Request_mem_init();
     /* For any code in the device that wants to check for runtime 
        decisions on the value of isThreaded, set a provisional
        value here. We could let the MPID_Init routine override this */
