@@ -206,7 +206,7 @@ const char *MPIR_Handle_get_kind_str(int kind);
 
 /* For direct, the remainder of the handle is the index into a predefined 
    block */
-#define HANDLE_MASK 0x03FFFFFF
+#define HANDLE_MASK 0x000FFFFF
 #define HANDLE_INDEX(a) ((a)& HANDLE_MASK)
 
 #if defined (MPL_USE_DBG_LOGGING)
@@ -472,10 +472,12 @@ static inline void *MPIR_Handle_get_ptr_indirect( int, MPIR_Object_alloc_t * );
     switch (HANDLE_GET_KIND(a)) {					\
         case HANDLE_KIND_DIRECT:                    \
             ptr=MPIR_##kind##_direct[bucket]+HANDLE_INDEX(a);\
+            /*printf("[D] h=%x, buck=%d, idx=%d, ptr=%p\n", a, bucket, HANDLE_INDEX(a), ptr);*/\
             break;                                  \
         case HANDLE_KIND_INDIRECT:                  \
             ptr=((MPIR_##kind*)                     \
             MPIR_Handle_get_ptr_indirect(a,&MPIR_##kind##_mem[bucket]));\
+            /*printf("[I] h=%x, buck=%d, ptr=%p\n", a, bucket, ptr);*/\
             break;                                  \
         case HANDLE_KIND_INVALID:                   \
         case HANDLE_KIND_BUILTIN:                   \
