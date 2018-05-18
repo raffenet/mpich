@@ -165,6 +165,17 @@ static inline int MPIDI_workq_ep_progress_body(int ep_idx)
                                            &workq_elemt->request);
             if (mpi_errno != MPI_SUCCESS) goto fn_fail;
             break;
+        case ISSEND:
+            mpi_errno = MPIDI_NM_mpi_issend(workq_elemt->send_buf,
+                                           workq_elemt->count,
+                                           workq_elemt->datatype,
+                                           workq_elemt->rank,
+                                           workq_elemt->tag,
+                                           workq_elemt->comm_ptr,
+                                           workq_elemt->context_offset,
+                                           &workq_elemt->request);
+            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+            break;
         case RECV:
             mpi_errno = MPIDI_NM_mpi_recv(workq_elemt->recv_buf,
                                            workq_elemt->count,
@@ -277,6 +288,8 @@ static inline int MPIDI_workq_global_progress(int* made_progress)
     err = func(send_buf, count, datatype, rank, tag, comm, context_offset, request);
 #define MPIDI_DISPATCH_PT2PT_ISEND(func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
     err = func(send_buf, count, datatype, rank, tag, comm, context_offset, request);
+#define MPIDI_DISPATCH_PT2PT_ISSEND(func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
+    err = func(send_buf, count, datatype, rank, tag, comm, context_offset, request);
 
 #ifdef MPIDI_CH4_MT_DIRECT
 #define MPIDI_DISPATCH_PT2PT(op, func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err)   \
@@ -291,11 +304,12 @@ do {                                                                            
 #define MPIDI_DISPATCH_PT2PT(op, func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
 do {                                                                                                        \
     err = MPI_SUCCESS;                                                                                      \
-    int ep_idx;                                                                                             \
-    if (op == SEND || op == ISEND)                                                              \
-        *request = MPIR_Request_create(MPIR_REQUEST_KIND__SEND);                                            \
-    else if (op == RECV || op == IRECV)                                                         \
-        *request = MPIR_Request_create(MPIR_REQUEST_KIND__RECV);                                            \
+    int ep_idx, int bucket;                                                                                 \
+    MPIDI_find_tag_bucket(comm, rank, tag, &bucket);                                                        \
+    if (op == SEND || op == ISEND)                                                                          \
+        *request = MPIR_Request_create_buck(MPIR_REQUEST_KIND__SEND, bucket);                               \
+    else if (op == RECV || op == IRECV)                                                                     \
+        *request = MPIR_Request_create_buck(MPIR_REQUEST_KIND__RECV, bucket);                               \
     MPIDI_find_tag_ep(comm, rank, tag, &ep_idx);                                                            \
     MPIDI_workq_pt2pt_enqueue(op, send_buf, recv_buf, count, datatype,                                      \
                               rank, tag, comm, context_offset, ep_idx, status, *request);                   \
@@ -304,14 +318,15 @@ do {                                                                            
 #define MPIDI_DISPATCH_PT2PT(op, func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
 do {                                                                                                        \
     err = MPI_SUCCESS;                                                                                      \
-    int ep_idx, cs_acq = 0;                                                                                 \
+    int ep_idx, cs_acq = 0, bucket;                                                                         \
+    MPIDI_find_tag_bucket(comm, rank, tag, &bucket);                                                        \
     MPIDI_find_tag_ep(comm, rank, tag, &ep_idx);                                                            \
     MPID_THREAD_CS_TRYENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx], cs_acq);                                 \
     if(!cs_acq) {                                                                                           \
         if (op == SEND || op == ISEND)                                                                      \
-            *request = MPIR_Request_create(MPIR_REQUEST_KIND__SEND);                                        \
+            *request = MPIR_Request_create_buck(MPIR_REQUEST_KIND__SEND, bucket);                           \
         else if (op == RECV || op == IRECV)                                                                 \
-            *request = MPIR_Request_create(MPIR_REQUEST_KIND__RECV);                                        \
+            *request = MPIR_Request_create_buck(MPIR_REQUEST_KIND__RECV, bucket);                           \
         MPIDI_workq_pt2pt_enqueue(op, send_buf, recv_buf, count, datatype,                                  \
                                   rank, tag, comm, context_offset, ep_idx, status, *request);               \
     } else {                                                                                                \
