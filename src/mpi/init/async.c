@@ -17,9 +17,16 @@ static pthread_cond_t progress_cond;
 static volatile int progress_thread_done = 0;
 
 #if defined(__linux__)
+//#if !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
+//#endif
+#include <pthread.h>
 #include <sched.h>
-static int verbose = 0;
+static int verbose = 1;
+
+
+static void set_odd_cpuset(void) __attribute__((unused));
+static void set_even_cpuset(void) __attribute__((unused));
 
 static int core_count(void){
     return (int) sysconf(_SC_NPROCESSORS_ONLN);
@@ -35,7 +42,21 @@ static void print_cpuset(const char* prefix) {
     printf("%s %s\n", prefix, s); fflush(stdout);
 }
 
-static void set_odd_cpuset(){
+static void set_tozero_cpuset(){
+    int i, err;
+
+    cpu_set_t my_cpuset;
+    err = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    if(verbose) print_cpuset("Initial async thread cpu set: ");
+
+    for(i=1; i<core_count(); i++) CPU_CLR(i, &my_cpuset);
+
+    err = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &my_cpuset);
+    assert(err==0);
+    if(verbose) print_cpuset("New async thread cpu set:");
+}
+
+static void set_odd_cpuset() {
     int i, err;
 
     cpu_set_t my_cpuset;
@@ -48,7 +69,7 @@ static void set_odd_cpuset(){
     assert(err==0);
     if(verbose) print_cpuset("New async thread cpu set:");
 }
-static void set_even_cpuset(){
+static void set_even_cpuset() {
     int i, err;
 
     cpu_set_t my_cpuset;
@@ -62,6 +83,7 @@ static void set_even_cpuset(){
     if(verbose) print_cpuset("New main thread cpu set:");
 }
 #else
+#define set_tozero_cpuset()
 #define set_odd_cpuset()
 #define set_even_cpuset()
 #endif
@@ -81,7 +103,7 @@ static void progress_fn(void * data)
     MPI_Request request;
     MPI_Status status;
 
-    set_odd_cpuset();
+    set_tozero_cpuset();
 
     /* Explicitly add CS_ENTER/EXIT since this thread is created from
      * within an internal function and will call NMPI functions
@@ -152,8 +174,6 @@ int MPIR_Init_async_thread(void)
     MPID_Thread_create((MPID_Thread_func_t) progress_fn, NULL, &progress_thread_id, &err);
     MPIR_ERR_CHKANDJUMP1(err, mpi_errno, MPI_ERR_OTHER, "**mutex_create", "**mutex_create %s", strerror(err));
 
-    set_even_cpuset();
-    
     MPIR_FUNC_TERSE_EXIT(MPID_STATE_MPIR_INIT_ASYNC_THREAD);
 
  fn_exit:
