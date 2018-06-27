@@ -22,7 +22,7 @@ static volatile int progress_thread_done = 0;
 //#endif
 #include <pthread.h>
 #include <sched.h>
-static int verbose = 1;
+static int verbose = 0;
 
 
 static void set_odd_cpuset(void) __attribute__((unused));
