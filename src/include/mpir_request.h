@@ -115,6 +115,11 @@ struct MPIR_Request {
      * 32 bytes and 32-bit integers */
     MPIR_cc_t cc;
 
+#ifdef MPICH_THREAD_USE_MDTA
+    /* Synchronization variable for wait/signal */
+    MPIR_Thread_sync_t *sync;
+#endif
+
     /* completion notification counter: this must be decremented by
      * the request completion routine, when the completion count hits
      * zero.  this counter allows us to keep track of the completion
@@ -195,6 +200,9 @@ static inline void MPIR_Request_init(MPIR_Request *req, MPIR_Request_kind_t kind
         MPIR_STATUS_SET_CANCEL_BIT(req->status, FALSE);
 
 	req->comm		   = NULL;
+#ifdef MPICH_THREAD_USE_MDTA
+        req->sync = NULL;
+#endif
 
         switch(kind) {
         case MPIR_REQUEST_KIND__SEND:
@@ -254,6 +262,14 @@ static inline void MPIR_Request_free(MPIR_Request *req)
      * this request */
     MPID_Request_free_hook(req);
 
+#ifdef MPICH_THREAD_USE_MDTA
+    /* We signal the possible waiter to complete this request. */
+    if (req->sync) {
+        MPIR_Thread_sync_signal(req->sync, 0);
+        req->sync = NULL;
+    }
+#endif
+
     if (inuse == 0) {
         MPL_DBG_MSG_P(MPIR_DBG_REQUEST,VERBOSE,
                        "freeing request, handle=0x%08x", req->handle);
@@ -294,6 +310,15 @@ static inline void MPIR_Request_free(MPIR_Request *req)
         MPIR_Handle_obj_free(&MPIR_Request_mem[bucket], req);
     }
 }
+
+#ifdef MPICH_THREAD_USE_MDTA
+MPL_STATIC_INLINE_PREFIX void MPIR_Request_attach_sync(MPIR_Request * req_ptr,
+                                                       MPIR_Thread_sync_t * sync)
+{
+    req_ptr->sync = sync;
+}
+#endif
+
 int MPIR_Request_complete(MPI_Request *, MPIR_Request *, MPI_Status *, int *);
 int MPIR_Request_get_error(MPIR_Request *);
 int MPIR_Progress_wait_request(MPIR_Request *req);
