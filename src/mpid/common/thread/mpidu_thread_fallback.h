@@ -438,7 +438,7 @@ M*/
     MPL_thread_mutex_destroy(mutex_ptr_, err_ptr_)
 #define MPIDUI_thread_mutex_lock(mutex_ptr_, err_ptr_)                  \
     MPL_thread_mutex_lock(mutex_ptr_, err_ptr_)
-#define MPIDUI_thread_mutex_trylock(mutex_ptr_, err_ptr_)               \
+#define MPIDUI_thread_mutex_trylock(mutex_ptr_, err_ptr_, cs_acq_ptr)   \
     MPL_thread_mutex_trylock(mutex_ptr_, err_ptr_, cs_acq_ptr)
 #define MPIDUI_thread_mutex_unlock(mutex_ptr_, err_ptr_)                \
     MPL_thread_mutex_unlock(mutex_ptr_, err_ptr_)
