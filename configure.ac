@@ -1293,6 +1293,7 @@ AC_ARG_ENABLE([izem],
                           Accepted arguments are:
 			  sync     - use the Izem interface for sychronization objects
                                      (locks and condition variables) instead of the MPL interface
+			  queue    - use the Izem interface for concurrent queues
                           yes/all  - all of the above features are enabled
                           no/none  - none of the above features are enabled],,
 [enable_izem=no])
@@ -1305,8 +1306,12 @@ for option in $enable_izem ; do
         sync)
             izem_sync=yes
         ;;
+        queue)
+            izem_queue=yes
+        ;;
         yes|all)
             izem_sync=yes
+            izem_queue=yes
         ;;
         no|none)
         ;;
@@ -1321,6 +1326,9 @@ IFS="$save_IFS"
 
 if test "$izem_sync" = "yes" ; then
     AC_DEFINE(ENABLE_IZEM_SYNC,1,[Define to enable using Izem locks and condition variables])
+fi
+if test "$izem_queue" = "yes" ; then
+    AC_DEFINE(ENABLE_IZEM_QUEUE,1,[Define to enable using Izem queues])
 fi
 
 AC_ARG_VAR([ZMLIBNAME],[can be used to override the name of the Izem library (default: "zm")])
