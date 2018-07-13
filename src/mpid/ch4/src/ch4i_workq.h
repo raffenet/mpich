@@ -407,6 +407,9 @@ static inline int MPIDI_workq_global_progress(int* made_progress)
 #define MPIDI_DISPATCH_PT2PT_ISSEND(func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
     err = func(send_buf, count, datatype, rank, tag, comm, context_offset, request);
 
+#define MPIDI_DISPATCH_RMA_PUT(func, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, err) \
+    err = func(org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win);
+
 #ifdef MPIDI_CH4_MT_DIRECT
 #define MPIDI_DISPATCH_PT2PT(op, func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err)   \
 do {                                                                                                        \
@@ -416,6 +419,16 @@ do {                                                                            
     MPIDI_DISPATCH_PT2PT_##op(func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err)\
     MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                             \
 } while (0)
+
+#define MPIDI_DISPATCH_RMA(op, func, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, err)   \
+do {                                                                                                        \
+    int ep_idx;                                                                                             \
+    MPIDI_find_rma_ep(win, trg_rank, &ep_idx);                                                              \
+    MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                            \
+    MPIDI_DISPATCH_RMA_##op(func, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, err)\
+    MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                             \
+} while (0)
+
 #elif defined (MPIDI_CH4_MT_HANDOFF)
 #define MPIDI_DISPATCH_PT2PT(op, func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
 do {                                                                                                        \
@@ -430,6 +443,15 @@ do {                                                                            
     MPIDI_workq_pt2pt_enqueue(op, send_buf, recv_buf, count, datatype,                                      \
                               rank, tag, comm, context_offset, ep_idx, status, *request);                   \
 } while (0)
+
+#define MPIDI_DISPATCH_RMA(op, func, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, err) \
+do {                                                                                                        \
+    err = MPI_SUCCESS;                                                                                      \
+    int ep_idx;                                                                                             \
+    MPIDI_find_rma_ep(win, trg_rank, &ep_idx);                                                              \
+    MPIDI_workq_rma_enqueue(op, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, ep_idx);\
+} while (0)
+
 #elif defined (MPIDI_CH4_MT_TRYLOCK)
 #define MPIDI_DISPATCH_PT2PT(op, func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err) \
 do {                                                                                                        \
@@ -450,6 +472,23 @@ do {                                                                            
         MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                         \
     }                                                                                                       \
 } while (0)
+
+#define MPIDI_DISPATCH_RMA(op, func, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, err) \
+do {                                                                                                        \
+    err = MPI_SUCCESS;                                                                                      \
+    int ep_idx, cs_acq = 0;                                                                                 \
+    MPIDI_find_rma_ep(win,trg_rank, &ep_idx);                                                               \
+    MPID_THREAD_CS_TRYENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx], cs_acq);                                 \
+    if(!cs_acq) {                                                                                           \
+        MPIDI_workq_rma_enqueue(op, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, ep_idx);\
+    } else {                                                                                                \
+        MPIDI_workq_ep_progress(ep_idx);                                                                    \
+        MPIDI_DISPATCH_RMA_##op(func, org_addr, org_count, org_dt, trg_rank, trg_disp, trg_count, trg_dt, win, err);\
+        MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                         \
+    }                                                                                                       \
+} while (0)
+
+
 #else
 #error "Unknown thread safety model"
 #endif
