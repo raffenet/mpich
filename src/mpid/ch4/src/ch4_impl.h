@@ -756,8 +756,8 @@ static inline void MPIDI_find_rma_ep(MPIR_Win* win, int target_rank, int* ep_idx
 #if 0
     *ep_idx = ((win->comm_ptr->context_id + target_rank) % MPIDI_CH4_Global.n_netmod_eps) & INT_MAX;
 #else
-    // *ep_idx = 0;
-    *ep_idx = (MPIR_CONTEXT_READ_FIELD(PREFIX, win->comm_ptr->context_id) % MPIDI_CH4_Global.n_netmod_eps) & INT_MAX;
+     *ep_idx = 0;
+    // *ep_idx = (MPIR_CONTEXT_READ_FIELD(PREFIX, win->comm_ptr->context_id) % MPIDI_CH4_Global.n_netmod_eps) & INT_MAX;
 #endif
     MPIR_Assert(*ep_idx >= 0);
 }
