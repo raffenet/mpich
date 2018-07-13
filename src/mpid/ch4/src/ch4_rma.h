@@ -28,8 +28,9 @@ MPL_STATIC_INLINE_PREFIX int MPID_Put(const void *origin_addr,
     int mpi_errno;
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPID_PUT);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPID_PUT);
-    mpi_errno = MPIDI_NM_mpi_put(origin_addr, origin_count, origin_datatype,
-                                 target_rank, target_disp, target_count, target_datatype, win);
+
+    MPIDI_DISPATCH_RMA(PUT, MPIDI_NM_mpi_put, origin_addr, origin_count, origin_datatype,
+                                 target_rank, target_disp, target_count, target_datatype, win, mpi_errno);
     if (mpi_errno != MPI_SUCCESS) {
         MPIR_ERR_POP(mpi_errno);
     }
