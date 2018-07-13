@@ -130,6 +130,8 @@ static inline void MPIDI_workq_rma_enqueue_body(MPIDI_workq_op_t op,
     MPIDI_workq_enqueue(&MPIDI_CH4_Global.ep_queues[ep_idx], rma_elemt, bucket_idx);
 }
 
+#if !defined(WORKD_DEQ_RANGE)
+
 static inline int MPIDI_workq_ep_progress_body(int ep_idx)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -221,6 +223,120 @@ static inline int MPIDI_workq_ep_progress_body(int ep_idx)
 fn_fail:
     return mpi_errno;
 }
+
+#else
+
+#include <omp.h>
+
+#define WORKQ_BATCHSZ 16
+#define WORKQ_PROGRESS_LEN 1
+static inline int MPIDI_workq_ep_progress_body(int ep_idx)
+{
+    int mpi_errno = MPI_SUCCESS;
+    void* elemts[WORKQ_BATCHSZ] = {NULL};
+    MPIDI_workq_elemt_t* workq_elemt;
+    MPIDI_workq_t *cur_workq = &MPIDI_CH4_Global.ep_queues[ep_idx];
+    int tid = omp_get_thread_num();
+    int progress_partition = tid / WORKQ_PROGRESS_LEN;
+    int start = progress_partition * WORKQ_PROGRESS_LEN;
+    int stop = (progress_partition + 1) * WORKQ_PROGRESS_LEN;
+    if (stop > MPIR_CVAR_CH4_WORKQ_NBUCKETS)
+        stop = MPIR_CVAR_CH4_WORKQ_NBUCKETS;
+
+    MPIDI_WORKQ_PROGRESS_START;
+
+    while (1) {
+        int out_count = 0, i;
+        MPIDI_workq_dequeue_range(cur_workq, (void**)elemts, start, stop, WORKQ_BATCHSZ, &out_count);
+        if(out_count > 0) {
+            printf("[%d] dequeued %d elemts from [%d,%d[\n", tid, out_count, start, stop);
+            for(i = 0; i < out_count; i++) {
+                workq_elemt = (MPIDI_workq_elemt_t*) elemts[i];
+                MPIDI_WORKQ_ISSUE_START;
+                switch(workq_elemt->op) {
+                case SEND:
+                    mpi_errno = MPIDI_NM_mpi_send(workq_elemt->send_buf,
+                                                  workq_elemt->count,
+                                                  workq_elemt->datatype,
+                                                  workq_elemt->rank,
+                                                  workq_elemt->tag,
+                                                  workq_elemt->comm_ptr,
+                                                  workq_elemt->context_offset,
+                                                  &workq_elemt->request);
+                    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+                    break;
+                case ISEND:
+                    mpi_errno = MPIDI_NM_mpi_isend(workq_elemt->send_buf,
+                                                   workq_elemt->count,
+                                                   workq_elemt->datatype,
+                                                   workq_elemt->rank,
+                                                   workq_elemt->tag,
+                                                   workq_elemt->comm_ptr,
+                                                   workq_elemt->context_offset,
+                                                   &workq_elemt->request);
+                    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+                    break;
+                case ISSEND:
+                    mpi_errno = MPIDI_NM_mpi_issend(workq_elemt->send_buf,
+                                                   workq_elemt->count,
+                                                   workq_elemt->datatype,
+                                                   workq_elemt->rank,
+                                                   workq_elemt->tag,
+                                                   workq_elemt->comm_ptr,
+                                                   workq_elemt->context_offset,
+                                                   &workq_elemt->request);
+                    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+                    break;
+                case RECV:
+                    mpi_errno = MPIDI_NM_mpi_recv(workq_elemt->recv_buf,
+                                                   workq_elemt->count,
+                                                   workq_elemt->datatype,
+                                                   workq_elemt->rank,
+                                                   workq_elemt->tag,
+                                                   workq_elemt->comm_ptr,
+                                                   workq_elemt->context_offset,
+                                                   workq_elemt->status,
+                                                   &workq_elemt->request);
+                    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+                    break;
+                case IRECV:
+                    mpi_errno = MPIDI_NM_mpi_irecv(workq_elemt->recv_buf,
+                                                   workq_elemt->count,
+                                                   workq_elemt->datatype,
+                                                   workq_elemt->rank,
+                                                   workq_elemt->tag,
+                                                   workq_elemt->comm_ptr,
+                                                   workq_elemt->context_offset,
+                                                   &workq_elemt->request);
+                    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+                    break;
+                case PUT:
+                    mpi_errno = MPIDI_NM_mpi_put(workq_elemt->origin_addr,
+                                                 workq_elemt->origin_count,
+                                                 workq_elemt->origin_datatype,
+                                                 workq_elemt->target_rank,
+                                                 workq_elemt->target_disp,
+                                                 workq_elemt->target_count,
+                                                 workq_elemt->target_datatype,
+                                                 workq_elemt->win_ptr);
+                    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+                    break;
+                }
+                MPIDI_WORKQ_ISSUE_STOP;
+                MPL_free(workq_elemt);
+            }
+        } else {
+            break;
+        }
+    }
+
+    MPIDI_WORKQ_PROGRESS_STOP;
+
+fn_fail:
+    return mpi_errno;
+}
+
+#endif
 
 static inline void MPIDI_workq_pt2pt_enqueue(MPIDI_workq_op_t op,
                                              const void *send_buf,
