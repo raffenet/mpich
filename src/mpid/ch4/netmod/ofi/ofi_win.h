@@ -257,11 +257,15 @@ static inline int MPIDI_OFI_win_progress_fence(MPIR_Win * win)
     int ret;
     uint64_t tcount, donecount;
     MPIDI_OFI_win_request_t *r;
+    int ep_idx;
 
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_OFI_WIN_PROGRESS_FENCE);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_OFI_WIN_PROGRESS_FENCE);
 
     MPID_THREAD_CS_ENTER(POBJ, MPIDI_OFI_THREAD_FI_MUTEX);
+
+    MPIDI_find_rma_ep(win, 0/*dummy rank*/, &ep_idx);
+
     tcount = *MPIDI_OFI_WIN(win).issued_cntr;
     donecount = fi_cntr_read(MPIDI_OFI_WIN(win).cmpl_cntr);
 
@@ -270,7 +274,9 @@ static inline int MPIDI_OFI_win_progress_fence(MPIR_Win * win)
     while (tcount > donecount) {
         MPIR_Assert(donecount <= tcount);
         MPID_THREAD_CS_EXIT(POBJ, MPIDI_OFI_THREAD_FI_MUTEX);
+        MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
         MPIDI_OFI_PROGRESS();
+        MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
         MPID_THREAD_CS_ENTER(POBJ, MPIDI_OFI_THREAD_FI_MUTEX);
         donecount = fi_cntr_read(MPIDI_OFI_WIN(win).cmpl_cntr);
         itercount++;

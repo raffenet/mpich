@@ -384,14 +384,19 @@ static inline int MPIDI_workq_ep_progress(int ep_idx)
 
 static inline int MPIDI_workq_global_progress(int* made_progress)
 {
-    int mpi_errno, ep_idx;
+    int mpi_errno = MPI_SUCCESS, ep_idx, cs_acq = 0;
     *made_progress = 1;
     for( ep_idx = 0; ep_idx < MPIDI_CH4_Global.n_netmod_eps; ep_idx++) {
-        MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
-        mpi_errno = MPIDI_workq_ep_progress(ep_idx);
-        if(unlikely(mpi_errno != MPI_SUCCESS))
-            break;
-        MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+        MPID_THREAD_CS_TRYENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx], cs_acq);
+        if (cs_acq) {
+            mpi_errno = MPIDI_workq_ep_progress(ep_idx);
+            if(unlikely(mpi_errno != MPI_SUCCESS)) {
+                MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+                abort();
+                break;
+            }
+            MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+        }
     }
     return mpi_errno;
 }
