@@ -65,8 +65,11 @@ void MPL_thread_create(MPL_thread_func_t func, void *data, MPL_thread_id_t * id,
 #define MPL_thread_mutex_create(mutex_ptr_, err_ptr_)                   \
     do {                                                                \
         int err__;                                                      \
+        pthread_mutexattr_t attr__;                                     \
                                                                         \
-        err__ = pthread_mutex_init(mutex_ptr_, NULL);                   \
+        pthread_mutexattr_init(&attr__);                                \
+        pthread_mutexattr_settype(&attr__, PTHREAD_MUTEX_RECURSIVE); \
+        err__ = pthread_mutex_init(mutex_ptr_, &attr__);                \
         if (unlikely(err__))                                            \
             MPL_internal_sys_error_printf("pthread_mutex_init", err__,  \
                                           "    %s:%d\n", __FILE__, __LINE__); \
