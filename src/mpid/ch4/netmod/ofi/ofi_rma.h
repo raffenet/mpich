@@ -564,6 +564,60 @@ static inline int MPIDI_OFI_do_put(const void *origin_addr,
     goto fn_exit;
 }
 
+#undef FUNCNAME
+#define FUNCNAME MPIDI_OFI_do_put_contig
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+static inline int MPIDI_OFI_do_put_contig(const void *origin_addr,
+                                   int origin_count,
+                                   MPI_Datatype origin_datatype,
+                                   int target_rank,
+                                   MPI_Aint target_disp,
+                                   int target_count,
+                                   MPI_Datatype target_datatype,
+                                   MPIR_Win * win,
+                                   MPI_Aint origin_true_lb,
+                                   size_t target_bytes)
+{
+    int mpi_errno = MPI_SUCCESS;
+    size_t offset;
+    uint64_t flags;
+    struct fid_ep *ep;
+    struct fi_msg_rma msg;
+    struct iovec iov;
+    struct fi_rma_iov riov;
+    int ep_idx;
+    MPIR_Request **sigreq = NULL;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_OFI_DO_PUT_CONTIG);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_OFI_DO_PUT_CONTIG);
+
+    MPIDI_find_rma_ep(win, target_rank, &ep_idx);
+    MPIDI_OFI_INIT_SIGNAL_REQUEST(win, sigreq, &flags, ep_idx, &ep);
+    offset = target_disp * MPIDI_OFI_winfo_disp_unit(win, target_rank);
+
+    msg.desc = NULL;
+    msg.addr = MPIDI_OFI_comm_to_phys(win->comm_ptr, target_rank, MPIDI_OFI_API_RMA);
+    msg.context = NULL;
+    msg.data = 0;
+    msg.msg_iov = &iov;
+    msg.iov_count = 1;
+    msg.rma_iov = &riov;
+    msg.rma_iov_count = 1;
+    iov.iov_base = (char *) origin_addr + origin_true_lb;
+    iov.iov_len = target_bytes;
+    riov.addr = (uint64_t) (MPIDI_OFI_winfo_base(win, target_rank) + offset);
+    riov.len = target_bytes;
+    riov.key = MPIDI_OFI_winfo_mr_key(win, target_rank);
+    MPIDI_OFI_CALL_RETRY2(MPIDI_OFI_INIT_CHUNK_CONTEXT(win, sigreq),
+                          fi_writemsg(MPIDI_OFI_WIN(win).ep, &msg, flags), rdma_write);
+
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_OFI_DO_PUT_CONTIG);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
 
 #undef FUNCNAME
 #define FUNCNAME MPIDI_NM_mpi_put
@@ -626,6 +680,14 @@ static inline int MPIDI_NM_mpi_put(const void *origin_addr,
                                               + target_true_lb, MPIDI_OFI_winfo_mr_key(win,
                                                                                        target_rank)),
                               rdma_inject_write);
+    } else if (origin_contig && target_contig) {
+         mpi_errno = MPIDI_OFI_do_put_contig(origin_addr,
+                                     origin_count,
+                                     origin_datatype,
+                                     target_rank,
+                                     target_disp, target_count, target_datatype, win,
+                                     origin_true_lb, target_bytes);
+
     }
     else {
         mpi_errno = MPIDI_OFI_do_put(origin_addr,
