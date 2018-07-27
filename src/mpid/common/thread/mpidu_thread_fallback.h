@@ -66,13 +66,11 @@ g * MPI_FINALIZED, MPI_GET_COUNT, MPI_GET_ELEMENTS, MPI_GRAPH_GET,
 #if !defined(ENABLE_IZEM_SYNC)
 typedef struct {
     MPL_thread_mutex_t mutex;
-    OPA_int_t num_queued_threads;
 } MPIDU_Thread_mutex_t;
 typedef MPL_thread_cond_t  MPIDU_Thread_cond_t;
 #else
 typedef struct {
     zm_lock_t mutex;
-    OPA_int_t num_queued_threads;
 } MPIDU_Thread_mutex_t;
 typedef zm_cond_t  MPIDU_Thread_cond_t;
 #endif
@@ -419,8 +417,6 @@ M*/
 @*/
 #define MPIDU_Thread_yield(mutex_ptr_, err_ptr_)                        \
     do {                                                                \
-        if (OPA_load_int(&(mutex_ptr_)->num_queued_threads) == 0)       \
-            break;                                                      \
         MPIDU_Thread_mutex_unlock(mutex_ptr_, err_ptr_);                \
         MPIR_Assert(*err_ptr_ == 0);                                    \
         MPL_thread_yield();                                             \
@@ -511,7 +507,6 @@ do {                                                                    \
 @*/
 #define MPIDU_Thread_mutex_create(mutex_ptr_, err_ptr_)                 \
     do {                                                                \
-        OPA_store_int(&(mutex_ptr_)->num_queued_threads, 0);            \
         MPIDUI_thread_mutex_create(&(mutex_ptr_)->mutex, err_ptr_);        \
         MPIR_Assert(*err_ptr_ == 0);                                    \
         MPL_DBG_MSG_P(MPIR_DBG_THREAD,TYPICAL,"Created MPIDUI_thread_mutex %p", (mutex_ptr_)); \
@@ -541,22 +536,18 @@ do {                                                                    \
 @*/
 #define MPIDU_Thread_mutex_lock(mutex_ptr_, err_ptr_)                   \
     do {                                                                \
-        OPA_incr_int(&(mutex_ptr_)->num_queued_threads);                \
         MPL_DBG_MSG_P(MPIR_DBG_THREAD,VERBOSE,"enter MPIDUI_thread_mutex_lock %p", &(mutex_ptr_)->mutex); \
         MPIDUI_thread_mutex_lock(&(mutex_ptr_)->mutex, err_ptr_);          \
         MPIR_Assert(*err_ptr_ == 0);                                    \
         MPL_DBG_MSG_P(MPIR_DBG_THREAD,VERBOSE,"exit MPIDUI_thread_mutex_lock %p", &(mutex_ptr_)->mutex); \
-        OPA_decr_int(&(mutex_ptr_)->num_queued_threads);                \
     } while (0)
 
 #define MPIDU_Thread_mutex_trylock(mutex_ptr_, err_ptr_, cs_acq_ptr)       \
     do {                                                                \
-        OPA_incr_int(&(mutex_ptr_)->num_queued_threads);                \
         MPL_DBG_MSG_P(MPIR_DBG_THREAD,VERBOSE,"enter MPL_thread_mutex_lock %p", &(mutex_ptr_)->mutex); \
         MPIDUI_thread_mutex_trylock(&(mutex_ptr_)->mutex, err_ptr_, cs_acq_ptr);\
         MPIR_Assert(*err_ptr_ == 0);                                    \
         MPL_DBG_MSG_P(MPIR_DBG_THREAD,VERBOSE,"exit MPL_thread_mutex_lock %p", &(mutex_ptr_)->mutex); \
-        OPA_decr_int(&(mutex_ptr_)->num_queued_threads);                \
     } while (0)
 
 /*@
@@ -622,13 +613,11 @@ do {                                                                    \
 @*/
 #define MPIDU_Thread_cond_wait(cond_ptr_, mutex_ptr_, err_ptr_)         \
     do {                                                                \
-        OPA_incr_int(&(mutex_ptr_)->num_queued_threads);                \
         MPL_DBG_MSG_FMT(MPIR_DBG_THREAD,TYPICAL,(MPL_DBG_FDEST,"Enter cond_wait on cond=%p mutex=%p",(cond_ptr_),&(mutex_ptr_)->mutex)); \
         MPIDUI_thread_cond_wait(cond_ptr_, &(mutex_ptr_)->mutex, err_ptr_); \
         MPIR_Assert_fmt_msg(*((int *) err_ptr_) == 0,                   \
                             ("cond_wait failed, err=%d (%s)", *((int *) err_ptr_), strerror(*((int *) err_ptr_)))); \
         MPL_DBG_MSG_FMT(MPIR_DBG_THREAD,TYPICAL,(MPL_DBG_FDEST,"Exit cond_wait on cond=%p mutex=%p",(cond_ptr_),&(mutex_ptr_)->mutex)); \
-        OPA_decr_int(&(mutex_ptr_)->num_queued_threads);                \
     } while (0)
 
 /*@
