@@ -582,11 +582,7 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[],
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
 
-#if !defined(MPIDI_CH4_MT_HANDOFF) && !defined(MPIDI_CH4_MT_TRYLOCK)
-    MPID_THREAD_CS_ENTER(GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
-#else
     MPID_THREAD_CS_ENTER(EP_GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
-#endif
     MPIR_FUNC_TERSE_PT2PT_ENTER(MPID_STATE_MPI_WAITALL);
 
     /* Check the arguments */
@@ -625,11 +621,7 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[],
     
  fn_exit:
     MPIR_FUNC_TERSE_PT2PT_EXIT(MPID_STATE_MPI_WAITALL);
-#if !defined(MPIDI_CH4_MT_HANDOFF)  && !defined(MPIDI_CH4_MT_TRYLOCK)
-    MPID_THREAD_CS_EXIT(GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
-#else
     MPID_THREAD_CS_EXIT(EP_GLOBAL, MPIR_THREAD_GLOBAL_ALLFUNC_MUTEX);
-#endif
     return mpi_errno;
 
  fn_fail:
