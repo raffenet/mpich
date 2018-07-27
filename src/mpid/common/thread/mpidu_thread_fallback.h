@@ -206,21 +206,21 @@ M*/
 #define MPIDUI_THREAD_CS_TRYENTER_GLOBAL do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_POBJ do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_EP_GLOBAL do {} while (0)
-#define MPIDUI_THREAD_CS_TRYENTER_EP do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_EP(mutex, cs_acq) do {} while (0)
 
 #elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ
 
 #define MPIDUI_THREAD_CS_TRYENTER_POBJ  do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_GLOBAL do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_EP_GLOBAL do {} while (0)
-#define MPIDUI_THREAD_CS_TRYENTER_EP do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_EP(mutex, cs_acq) do {} while (0)
 
 #elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP
 
 #define MPIDUI_THREAD_CS_TRYENTER_GLOBAL do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_POBJ do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_EP_GLOBAL(mutex) do {} while (0)
-#define MPIDUI_THREAD_CS_TRYENTER_EP MPIDUI_THREAD_CS_TRYENTER_NREC
+#define MPIDUI_THREAD_CS_TRYENTER_EP(mutex, cs_acq) MPIDUI_THREAD_CS_TRYENTER_NREC(mutex, cs_acq)
 
 #endif  /* MPICH_THREAD_GRANULARITY */
 
@@ -229,7 +229,7 @@ M*/
 #define MPIDUI_THREAD_CS_TRYENTER_GLOBAL(mutex) do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_POBJ(mutex) do {} while (0)
 #define MPIDUI_THREAD_CS_TRYENTER_EP_GLOBAL do {} while (0)
-#define MPIDUI_THREAD_CS_TRYENTER_EP do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_EP(mutex, cs_acq) do {} while (0)
 
 #endif /* MPICH_IS_THREADED */
 

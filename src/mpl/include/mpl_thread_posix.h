@@ -120,14 +120,16 @@ void MPL_thread_create(MPL_thread_func_t func, void *data, MPL_thread_id_t * id,
 #define MPL_thread_mutex_trylock(mutex_ptr_, err_ptr_, cs_acq_ptr)      \
     do {                                                                \
         int err__;                                                      \
+        *(int*)cs_acq_ptr = 1;                                          \
         err__ = pthread_mutex_trylock(mutex_ptr_);                      \
         if (unlikely(err__ != 0 && err__ != EBUSY)) {                   \
+            *(int*)cs_acq_ptr = 0;                                      \
             MPL_internal_sys_error_printf("pthread_mutex_trylock", err__,  \
                                           "    %s:%d\n", __FILE__, __LINE__); \
         }                                                               \
         else {                                                          \
-            if (err__ == 0)                                             \
-                *(int*)cs_acq_ptr = 1;                                  \
+            if (unlikely(err__ != 0))                                   \
+                *(int*)cs_acq_ptr = 0;                                  \
              err__ = 0;                                                 \
         }                                                               \
         *(int *)(err_ptr_) = err__;                                     \
