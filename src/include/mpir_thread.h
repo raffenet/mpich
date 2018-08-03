@@ -66,6 +66,8 @@ typedef struct {
 
 #if (MPICH_THREAD_LEVEL == MPI_THREAD_MULTIPLE)
     int lock_depth;
+    int countdown;
+    int cur_backoff;
 #ifdef MPICH_THREAD_USE_MDTA
     MPIR_Thread_sync_t sync;
 #endif

@@ -220,6 +220,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
             }
             mpi_errno = request_complete_fastpath(&array_of_requests[i], request_ptrs[i]);
             if (mpi_errno) MPIR_ERR_POP(mpi_errno);
+            MPID_Progress_reset();
         }
 
         MPID_Progress_end(&progress_state);

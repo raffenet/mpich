@@ -36,6 +36,7 @@ typedef MPIDI_CH4_Ticket_lock MPID_Thread_mutex_t;
 typedef MPIDU_Thread_mutex_t MPID_Thread_mutex_t;
 #define MPID_THREAD_CS_ENTER       MPIDU_THREAD_CS_ENTER
 #define MPID_THREAD_CS_TRYENTER    MPIDU_THREAD_CS_TRYENTER
+#define MPID_THREAD_CS_TRYENTER_BO MPIDU_THREAD_CS_TRYENTER_BO
 #define MPID_THREAD_CS_EXIT        MPIDU_THREAD_CS_EXIT
 #define MPID_THREAD_CS_YIELD       MPIDU_THREAD_CS_YIELD
 #define MPID_Thread_mutex_create   MPIDU_Thread_mutex_create

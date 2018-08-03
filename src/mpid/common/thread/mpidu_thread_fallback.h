@@ -231,6 +231,82 @@ M*/
 
 #endif /* MPICH_IS_THREADED */
 
+/*M MPIDU_THREAD_CS_TRYENTER_BO - Try enter a named critical section with a backoff (BO) mechanism on failure
+
+  Input Parameters:
++ _name - name of the critical section
+- _context - A context (typically an object) of the critical section
+- cs_acq   - A flag that indicades whether the critical section was acquired
+
+M*/
+
+#define MPIDU_THREAD_CS_TRYENTER_BO(name, mutex, cs_acq) MPIDUI_THREAD_CS_TRYENTER_BO_##name(mutex, cs_acq)
+
+#if defined(MPICH_IS_THREADED)
+
+#define MPIDUI_THREAD_CS_TRYENTER_BO_NREC(mutex, cs_acq)                \
+    do {                                                                \
+        if (MPIR_ThreadInfo.isThreaded) {                               \
+            int err_ = 0;                                               \
+            MPIR_Per_thread_t *per_thread = NULL;                       \
+                                                                        \
+            MPL_DBG_MSG(MPIR_DBG_THREAD, TYPICAL, "try locking mutex with backoff"); \
+            MPID_THREADPRIV_KEY_GET_ADDR(MPIR_ThreadInfo.isThreaded, MPIR_Per_thread_key, \
+                                         MPIR_Per_thread, per_thread, &err_); \
+            MPIR_Assert(err_ == 0);                                     \
+                                                                        \
+            cs_acq = 0;                                                 \
+            if (per_thread->countdown == 0) {                           \
+                err_ = 0;                                               \
+                MPIDU_Thread_mutex_trylock(&mutex, &err_, &cs_acq);     \
+                MPIR_Assert(err_ == 0);                                 \
+                if(likely(cs_acq) && unlikely(per_thread->cur_backoff > 1)) {\
+                    per_thread->cur_backoff = 1;                        \
+                } else {                                                \
+                    if(unlikely(per_thread->cur_backoff == 0 )) \
+                        per_thread->cur_backoff = 1;                   \
+                    else if(per_thread->cur_backoff < MPIR_CVAR_MUTEX_MAX_BACKOFF) \
+                        per_thread->cur_backoff *= 2;                   \
+                    per_thread->countdown = per_thread->cur_backoff;    \
+                }                                                       \
+            } else {                                                    \
+                per_thread->countdown--;                                \
+            }                                                           \
+        }                                                               \
+    } while (0)
+
+#if MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__GLOBAL
+
+#define MPIDUI_THREAD_CS_TRYENTER_BO_GLOBAL do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_POBJ do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP_GLOBAL do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP(mutex, cs_acq) do {} while (0)
+
+#elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ
+
+#define MPIDUI_THREAD_CS_TRYENTER_BO_POBJ  do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_GLOBAL do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP_GLOBAL do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP(mutex, cs_acq) do {} while (0)
+
+#elif MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP
+
+#define MPIDUI_THREAD_CS_TRYENTER_BO_GLOBAL do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_POBJ do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP_GLOBAL(mutex) do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP(mutex, cs_acq) MPIDUI_THREAD_CS_TRYENTER_BO_NREC(mutex, cs_acq)
+
+#endif  /* MPICH_THREAD_GRANULARITY */
+
+#else  /* !defined(MPICH_IS_THREADED) */
+
+#define MPIDUI_THREAD_CS_TRYENTER_BO_GLOBAL(mutex) do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_POBJ(mutex) do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP_GLOBAL do {} while (0)
+#define MPIDUI_THREAD_CS_TRYENTER_BO_EP(mutex, cs_acq) do {} while (0)
+
+#endif /* MPICH_IS_THREADED */
+
 
 /*M MPIDU_THREAD_CS_EXIT - Exit a named critical section
 

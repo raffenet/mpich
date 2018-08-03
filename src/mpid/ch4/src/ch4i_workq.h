@@ -388,7 +388,7 @@ static inline int MPIDI_workq_global_progress(int* made_progress)
     *made_progress = 1;
     for( ep_idx = 0; ep_idx < MPIDI_CH4_Global.n_netmod_eps; ep_idx++) {
         cs_acq = 1;
-        MPID_THREAD_CS_TRYENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx], cs_acq);
+        MPID_THREAD_CS_TRYENTER_BO(EP, MPIDI_CH4_Global.ep_locks[ep_idx], cs_acq);
         if (cs_acq) {
             mpi_errno = MPIDI_workq_ep_progress(ep_idx);
             if(unlikely(mpi_errno != MPI_SUCCESS)) {

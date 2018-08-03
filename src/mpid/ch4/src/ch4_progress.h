@@ -41,7 +41,7 @@ MPL_STATIC_INLINE_PREFIX int MPID_Progress_test(void)
     /* todo: progress unexp_list */
     for (i = 0; i < MPIDI_CH4_Global.n_netmod_eps; i++) {
         cs_acq = 1;
-        MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[i]);
+        MPID_THREAD_CS_TRYENTER_BO(EP, MPIDI_CH4_Global.ep_locks[i], cs_acq);
         if (cs_acq) {
             mpi_errno = MPIDI_NM_progress(MPIDI_CH4_Global.netmod_context[i], 0);
             if (mpi_errno != MPI_SUCCESS) {
@@ -110,6 +110,22 @@ MPL_STATIC_INLINE_PREFIX int MPID_Progress_wait(MPID_Progress_state * state)
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPID_PROGRESS_WAIT);
     return ret;
+}
+
+MPL_STATIC_INLINE_PREFIX int MPID_Progress_reset()
+{
+    int err;
+    MPIR_Per_thread_t *per_thread = NULL;
+
+    MPID_THREADPRIV_KEY_GET_ADDR(MPIR_ThreadInfo.isThreaded, MPIR_Per_thread_key,
+                                 MPIR_Per_thread, per_thread, &err);
+    MPIR_Assert(err == 0);
+    if(unlikely(per_thread->cur_backoff != 1)) {
+        per_thread->countdown = 0;
+        per_thread->cur_backoff = 1;
+    }
+
+    return err;
 }
 
 

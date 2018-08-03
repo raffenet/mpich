@@ -49,6 +49,16 @@ cvars:
         Sets the default thread level to use when using MPI_INIT. This variable
         is case-insensitive.
 
+    - name        : MPIR_CVAR_MUTEX_MAX_BACKOFF
+      category    : THREADS
+      type        : int
+      default     : 1024
+      class       : device
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_ALL_EQ
+      description : >-
+        This variable controles the backoff duration on lock acquisition failure
+
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 

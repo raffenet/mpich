@@ -64,6 +64,7 @@ int MPIR_Test_impl(MPI_Request *request, int *flag, MPI_Status *status)
 	mpi_errno = MPIR_Request_complete(request, request_ptr, status,
 					  &active_flag);
 	*flag = TRUE;
+    MPID_Progress_reset();
 	if (mpi_errno) MPIR_ERR_POP(mpi_errno);
 	/* Fall through to the exit */
     } else if (unlikely(
