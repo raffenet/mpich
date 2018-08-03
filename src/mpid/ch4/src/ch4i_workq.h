@@ -421,6 +421,7 @@ static inline int MPIDI_workq_global_progress(int* made_progress)
 do {                                                                                                        \
     int ep_idx;                                                                                             \
     MPIDI_find_tag_ep(comm, rank, tag, &ep_idx);                                                            \
+    *request = NULL;                                                                                        \
     MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                            \
     MPIDI_DISPATCH_PT2PT_##op(func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err)\
     MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                             \
@@ -474,6 +475,7 @@ do {                                                                            
         MPIDI_workq_pt2pt_enqueue(op, send_buf, recv_buf, count, datatype,                                  \
                                   rank, tag, comm, context_offset, ep_idx, status, *request);               \
     } else {                                                                                                \
+        *request = NULL;                                                                                    \
         MPIDI_DISPATCH_PT2PT_##op(func, send_buf, recv_buf, count, datatype, rank, tag, comm, context_offset, status, request, err);\
         MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);                                         \
     }                                                                                                       \
