@@ -165,7 +165,7 @@ M*/
 
 #if defined(MPICH_IS_THREADED)
 
-#define MPIDUI_THREAD_CS_TRYENTER_NREC(mutex, cs_req)                   \
+#define MPIDUI_THREAD_CS_TRYENTER_NREC(mutex, cs_acq)                   \
     do {                                                                \
         if (MPIR_ThreadInfo.isThreaded) {                               \
             int err_ = 0;                                               \
