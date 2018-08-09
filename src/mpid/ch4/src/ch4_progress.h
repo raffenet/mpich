@@ -41,14 +41,14 @@ MPL_STATIC_INLINE_PREFIX int MPID_Progress_test(void)
     /* todo: progress unexp_list */
     for (i = 0; i < MPIDI_CH4_Global.n_netmod_eps; i++) {
         cs_acq = 1;
-        MPID_THREAD_CS_TRYENTER_BO(EP, MPIDI_CH4_Global.ep_locks[i], cs_acq);
+        MPIDI_ep_progress_cs_enter(i, &cs_acq);
         if (cs_acq) {
             mpi_errno = MPIDI_NM_progress(MPIDI_CH4_Global.netmod_context[i], 0);
             if (mpi_errno != MPI_SUCCESS) {
                 MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[i]);
                 MPIR_ERR_POP(mpi_errno);
             }
-            MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[i]);
+            MPIDI_ep_progress_cs_exit(i);
         }
     }
 #ifdef MPIDI_CH4_EXCLUSIVE_SHM

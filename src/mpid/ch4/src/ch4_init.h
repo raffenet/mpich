@@ -242,6 +242,8 @@ MPL_STATIC_INLINE_PREFIX int MPID_Init(int *argc,
         MPIDI_workq_init(&MPIDI_CH4_Global.ep_queues[i], MPIR_CVAR_CH4_WORKQ_NBUCKETS);
     }
 
+    MPIDI_ep_progress_model_init();
+
     MPID_Progress_register(MPIDI_workq_global_progress, &MPIDI_CH4_Global.progress_hook_id);
     MPID_Progress_activate(MPIDI_CH4_Global.progress_hook_id);
 

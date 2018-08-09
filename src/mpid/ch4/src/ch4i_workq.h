@@ -28,6 +28,69 @@ static inline double get_wtime() {
     return d;
 }
 
+#define MPIDI_THREAD_EP_PROGRESS_MODEL_RUNTIME      0
+#define MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO   1
+#define MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK      2
+#define MPIDI_THREAD_EP_PROGRESS_MODEL_LOCK         3
+
+#if !defined(MPIDI_THREAD_EP_PROGRESS_MODEL)
+#define MPIDI_THREAD_EP_PROGRESS_MODEL  MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO
+#endif
+
+static inline void MPIDI_ep_progress_model_init() {
+#if MPIDI_THREAD_EP_PROGRESS_MODEL == MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO
+    MPIDI_CH4_Global.ep_progress_model =  MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO;
+#elif MPIDI_THREAD_EP_PROGRESS_MODEL == MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK
+    MPIDI_CH4_Global.ep_progress_model =  MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK;
+#elif MPIDI_THREAD_EP_PROGRESS_MODEL == MPIDI_THREAD_EP_PROGRESS_MODEL_LOCK
+    MPIDI_CH4_Global.ep_progress_model =  MPIDI_THREAD_EP_PROGRESS_MODEL_LOCK;
+#elif MPIDI_THREAD_EP_PROGRESS_MODEL == MPIDI_THREAD_EP_PROGRESS_MODEL_RUNTIME
+    const char* s = getenv("MPIDI_THREAD_EP_PROGRESS_MODEL");
+    if( s != NULL ) {
+        MPIDI_CH4_Global.ep_progress_model = atoi(s);
+    } else {
+        MPIDI_CH4_Global.ep_progress_model = MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO;
+    }
+#endif
+//     switch (MPIDI_CH4_Global.ep_progress_model) {
+//        case MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO:
+//            printf("Using MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO\n");
+//            break;
+//        case MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK:
+//            printf("Using MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK\n");
+//            break;
+//        case MPIDI_THREAD_EP_PROGRESS_MODEL_LOCK:
+//            printf("Using MPIDI_THREAD_EP_PROGRESS_MODEL_LOCK\n");
+//            break;
+//        default:
+//            printf("No EP progress model selected\n");
+//            abort();
+//    }
+
+}
+
+static inline void MPIDI_ep_progress_cs_enter(int ep_idx, int *acq) {
+    int acquired = 1;
+    switch (MPIDI_CH4_Global.ep_progress_model) {
+        case MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK_BO:
+            MPID_THREAD_CS_TRYENTER_BO(EP, MPIDI_CH4_Global.ep_locks[ep_idx], acquired);
+            break;
+        case MPIDI_THREAD_EP_PROGRESS_MODEL_TRYLOCK:
+            MPID_THREAD_CS_TRYENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx], acquired);
+            break;
+        case MPIDI_THREAD_EP_PROGRESS_MODEL_LOCK:
+            MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+            break;
+    }
+    *acq = acquired;
+}
+
+static inline void MPIDI_ep_progress_cs_exit(int ep_idx) {
+    MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+}
+
+#define EP_PROGRESS_CS_EXIT(ep_lock)    MPID_THREAD_CS_EXIT(EP, ep_lock);
+
 #if defined(MPIDI_WORKQ_PROFILE)
 #define MPIDI_WORKQ_PT2PT_ENQUEUE_START  double enqueue_t1 = get_wtime();
 #define MPIDI_WORKQ_PT2PT_ENQUEUE_STOP                          \
@@ -388,7 +451,7 @@ static inline int MPIDI_workq_global_progress(int* made_progress)
     *made_progress = 1;
     for( ep_idx = 0; ep_idx < MPIDI_CH4_Global.n_netmod_eps; ep_idx++) {
         cs_acq = 1;
-        MPID_THREAD_CS_TRYENTER_BO(EP, MPIDI_CH4_Global.ep_locks[ep_idx], cs_acq);
+        MPIDI_ep_progress_cs_enter(ep_idx, &cs_acq);
         if (cs_acq) {
             mpi_errno = MPIDI_workq_ep_progress(ep_idx);
             if(unlikely(mpi_errno != MPI_SUCCESS)) {
@@ -396,7 +459,7 @@ static inline int MPIDI_workq_global_progress(int* made_progress)
                 abort();
                 break;
             }
-            MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+            MPIDI_ep_progress_cs_exit(ep_idx);
         }
     }
     return mpi_errno;
