@@ -44,16 +44,6 @@ cvars:
       description : >-
         If non-empty, this cvar specifies which shm module to use
 
-    - name        : MPIR_CVAR_THREAD_MAX_BACKOFF
-      category    : CH4
-      type        : int
-      default     : 16
-      class       : device
-      verbosity   : MPI_T_VERBOSITY_USER_BASIC
-      scope       : MPI_T_SCOPE_ALL_EQ
-      description : >-
-        If non-empty, this cvar specifies the number buckets per workq
-
     - name        : MPIR_CVAR_CH4_WORKQ_NBUCKETS
       category    : CH4
       type        : int

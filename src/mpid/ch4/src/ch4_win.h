@@ -399,13 +399,19 @@ MPL_STATIC_INLINE_PREFIX int MPID_Win_allocate(MPI_Aint size,
 MPL_STATIC_INLINE_PREFIX int MPID_Win_flush(int rank, MPIR_Win * win)
 {
     int mpi_errno;
+    int ep_idx;
+    MPIDI_find_rma_ep(win, 0/*dummy rank*/, &ep_idx);
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPID_WIN_FLUSH);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPID_WIN_FLUSH);
+
+    MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+
     mpi_errno = MPIDI_NM_mpi_win_flush(rank, win);
     if (mpi_errno != MPI_SUCCESS) {
         MPIR_ERR_POP(mpi_errno);
     }
   fn_exit:
+    MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPID_WIN_FLUSH);
     return mpi_errno;
   fn_fail:
@@ -419,13 +425,19 @@ MPL_STATIC_INLINE_PREFIX int MPID_Win_flush(int rank, MPIR_Win * win)
 MPL_STATIC_INLINE_PREFIX int MPID_Win_flush_local_all(MPIR_Win * win)
 {
     int mpi_errno;
+    int ep_idx;
+    MPIDI_find_rma_ep(win, 0/*dummy rank*/, &ep_idx);
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPID_WIN_FLUSH_LOCAL_ALL);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPID_WIN_FLUSH_LOCAL_ALL);
+
+    MPID_THREAD_CS_ENTER(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
+
     mpi_errno = MPIDI_NM_mpi_win_flush_local_all(win);
     if (mpi_errno != MPI_SUCCESS) {
         MPIR_ERR_POP(mpi_errno);
     }
   fn_exit:
+    MPID_THREAD_CS_EXIT(EP, MPIDI_CH4_Global.ep_locks[ep_idx]);
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPID_WIN_FLUSH_LOCAL_ALL);
     return mpi_errno;
   fn_fail:
