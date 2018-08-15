@@ -167,8 +167,16 @@ extern MPIR_Request MPIR_Request_direct[];
 static inline MPIR_Request *MPIR_Request_create(MPIR_Request_kind_t kind)
 {
     MPIR_Request *req;
+    MPIR_Per_thread_t *per_thread = NULL;
+    int err;
 
-    req = MPIR_Handle_obj_alloc(&MPIR_Request_mem);
+    MPID_THREADPRIV_KEY_GET_ADDR(MPIR_ThreadInfo.isThreaded, MPIR_Per_thread_key,
+                                  MPIR_Per_thread, per_thread, &err);
+    if (per_thread->request_cache_cnt > 0) {
+        req = per_thread->request_cache[--(per_thread->request_cache_cnt)];
+    } else {
+        req = MPIR_Handle_obj_alloc(&MPIR_Request_mem);
+    }
     if (req != NULL) {
 	MPL_DBG_MSG_P(MPIR_DBG_REQUEST,VERBOSE,
                       "allocated request, handle=0x%08x", req->handle);
@@ -287,7 +295,16 @@ static inline void MPIR_Request_free(MPIR_Request *req)
 
         MPID_Request_destroy_hook(req);
 
-        MPIR_Handle_obj_free(&MPIR_Request_mem, req);
+        MPIR_Per_thread_t *per_thread = NULL;
+        int err;
+
+        MPID_THREADPRIV_KEY_GET_ADDR(MPIR_ThreadInfo.isThreaded, MPIR_Per_thread_key,
+                                      MPIR_Per_thread, per_thread, &err);
+        if (per_thread->request_cache_cnt < MPIR_THREAD_REQUEST_CACHE) {
+            per_thread->request_cache[(per_thread->request_cache_cnt)++] = req;
+        } else {
+            MPIR_Handle_obj_free(&MPIR_Request_mem, req);
+        }
     }
 }
 
