@@ -42,12 +42,8 @@
                        "Cannot allocate Ssendack Request");             \
     } while (0)
 
-#define MPIDI_OFI_ssendack_request_t_tls_free(sreq)             \
-do {                                                            \
-    MPIR_Request *tmp_req = (MPIR_Request *) sreq;              \
-    int bucket = HANDLE_GET_BUCKET(tmp_req->handle);            \
-    MPIR_Handle_obj_free(&MPIR_Request_mem[bucket], (sreq));    \
-} while (0)
+#define MPIDI_OFI_ssendack_request_t_tls_free(req) \
+  MPIR_Handle_obj_free(&MPIR_Request_mem, (req))
 
 #define MPIDI_OFI_ssendack_request_t_alloc_and_init(req)        \
     do {                                                                \
@@ -323,7 +319,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_win_datatype_unmap(MPIDI_OFI_win_datatyp
 
 MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_win_request_complete(MPIDI_OFI_win_request_t * req)
 {
-    int count, bucket;
+    int count;
     MPIR_Assert(HANDLE_GET_MPI_KIND(req->handle) == MPIR_REQUEST);
     MPIR_Object_release_ref(req, &count);
     MPIR_Assert(count >= 0);
@@ -332,8 +328,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_win_request_complete(MPIDI_OFI_win_reque
         MPIDI_OFI_win_datatype_unmap(&req->noncontig->origin_dt);
         MPIDI_OFI_win_datatype_unmap(&req->noncontig->result_dt);
         MPL_free(req->noncontig);
-        bucket = HANDLE_GET_BUCKET(req->handle);
-        MPIR_Handle_obj_free(&MPIR_Request_mem[bucket], (req));
+        MPIR_Handle_obj_free(&MPIR_Request_mem, (req));
     }
 }
 

@@ -178,16 +178,11 @@ const char *MPIR_Handle_get_kind_str(int kind);
 #define HANDLE_GET_KIND(a) (((unsigned)(a)&HANDLE_KIND_MASK)>>HANDLE_KIND_SHIFT)
 #define HANDLE_SET_KIND(a,kind) ((a)|((kind)<<HANDLE_KIND_SHIFT))
 
-#define HANDLE_BUCKET_SHIFT 20
-#define HANDLE_GET_BUCKET(a) ( ((a)&0x03F00000) >> HANDLE_BUCKET_SHIFT )
-#define HANDLE_SET_BUCKET(a,bucket) ((a) | ((bucket) << HANDLE_BUCKET_SHIFT))
-
-
 /* For indirect, the remainder of the handle has a block and index within that
  * block */
-#define HANDLE_INDIRECT_SHIFT 6
-#define HANDLE_BLOCK(a) (((a)& 0x000FFFC0) >> HANDLE_INDIRECT_SHIFT)
-#define HANDLE_BLOCK_INDEX(a) ((a) & 0x0000003F)
+#define HANDLE_INDIRECT_SHIFT 12
+#define HANDLE_BLOCK(a) (((a)& 0x03FFF000) >> HANDLE_INDIRECT_SHIFT)
+#define HANDLE_BLOCK_INDEX(a) ((a) & 0x00000FFF)
 
 /* Number of blocks is between 1 and 16384 */
 #if defined MPID_HANDLE_NUM_BLOCKS
@@ -201,7 +196,7 @@ const char *MPIR_Handle_get_kind_str(int kind);
 #if defined MPID_HANDLE_NUM_INDICES
 #define HANDLE_NUM_INDICES MPID_HANDLE_NUM_INDICES
 #else
-#define HANDLE_NUM_INDICES 32
+#define HANDLE_NUM_INDICES 1024
 #endif /* MPID_HANDLE_NUM_INDICES */
 
 /* For direct, the remainder of the handle is the index into a predefined 
@@ -410,7 +405,6 @@ typedef struct MPIR_Object_alloc_t {
     void               *direct;         /* Pointer to direct block, used 
                                            for allocation */
     int                direct_size;     /* Size of direct block */
-    int                bucket;
 #if (MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__POBJ) || \
     (MPICH_THREAD_GRANULARITY == MPICH_THREAD_GRANULARITY__EP)
     MPID_Thread_mutex_t lock;           /**/
@@ -466,27 +460,6 @@ static inline void *MPIR_Handle_get_ptr_indirect( int, MPIR_Object_alloc_t * );
      }									\
 }
 
-#define MPIR_Get_ptr_bucket(kind,a,ptr)             \
-{                                                   \
-    int bucket = HANDLE_GET_BUCKET(a);              \
-    switch (HANDLE_GET_KIND(a)) {					\
-        case HANDLE_KIND_DIRECT:                    \
-            ptr=MPIR_##kind##_direct[bucket]+HANDLE_INDEX(a);\
-            /*printf("[D] h=%x, buck=%d, idx=%d, ptr=%p\n", a, bucket, HANDLE_INDEX(a), ptr);*/\
-            break;                                  \
-        case HANDLE_KIND_INDIRECT:                  \
-            ptr=((MPIR_##kind*)                     \
-            MPIR_Handle_get_ptr_indirect(a,&MPIR_##kind##_mem[bucket]));\
-            /*printf("[I] h=%x, buck=%d, ptr=%p\n", a, bucket, ptr);*/\
-            break;                                  \
-        case HANDLE_KIND_INVALID:                   \
-        case HANDLE_KIND_BUILTIN:                   \
-        default:                                    \
-            ptr=0;                                  \
-            break;                                  \
-     }                                              \
-}
-
 /* FIXME: the masks should be defined with the handle definitions instead
    of inserted here as literals */
 #define MPIR_Comm_get_ptr(a,ptr)       MPIR_Getb_ptr(Comm,a,0x03ffffff,ptr)
@@ -495,7 +468,7 @@ static inline void *MPIR_Handle_get_ptr_indirect( int, MPIR_Object_alloc_t * );
 #define MPIR_Op_get_ptr(a,ptr)         MPIR_Getb_ptr(Op,a,0x000000ff,ptr)
 #define MPIR_Info_get_ptr(a,ptr)       MPIR_Getb_ptr(Info,a,0x03ffffff,ptr)
 #define MPIR_Win_get_ptr(a,ptr)        MPIR_Get_ptr(Win,a,ptr)
-#define MPIR_Request_get_ptr(a,ptr)    MPIR_Get_ptr_bucket(Request,a,ptr)
+#define MPIR_Request_get_ptr(a,ptr)    MPIR_Get_ptr(Request,a,ptr)
 #define MPIR_Grequest_class_get_ptr(a,ptr) MPIR_Get_ptr(Grequest_class,a,ptr)
 /* Keyvals have a special format. This is roughly MPIR_Get_ptrb, but
    the handle index is in a smaller bit field.  In addition,

@@ -9,28 +9,10 @@
 
 /* style:PMPIuse:PMPI_Status_f2c:2 sig:0 */
 
-MPIR_Request MPIR_Request_direct[MPIR_REQUEST_MEM_NBUCKETS][MPIR_REQUEST_PREALLOC];
-MPIR_Object_alloc_t MPIR_Request_mem[MPIR_REQUEST_MEM_NBUCKETS] = {{0}};;
-
-#undef FUNCNAME
-#define FUNCNAME MPIR_Request_mem_init
-#undef FCNAME
-#define FCNAME MPL_QUOTE(FUNCNAME)
-
-void MPIR_Request_mem_init()
-{
-    for(int i = 0; i < MPIR_REQUEST_MEM_NBUCKETS; i++) {
-        MPIR_Request_mem[i].avail            = NULL;
-        MPIR_Request_mem[i].initialized      = 0;
-        MPIR_Request_mem[i].indirect         = NULL;
-        MPIR_Request_mem[i].indirect_size    = 0;
-        MPIR_Request_mem[i].kind             = MPIR_REQUEST;
-        MPIR_Request_mem[i].size             = sizeof(MPIR_Request);
-        MPIR_Request_mem[i].direct           = &MPIR_Request_direct[i][0];
-        MPIR_Request_mem[i].direct_size      = MPIR_REQUEST_PREALLOC;
-        MPIR_Request_mem[i].bucket           = i;
-    }
-}
+MPIR_Request MPIR_Request_direct[MPIR_REQUEST_PREALLOC] = {{0}};
+MPIR_Object_alloc_t MPIR_Request_mem = {
+    0, 0, 0, 0, MPIR_REQUEST, sizeof(MPIR_Request), MPIR_Request_direct,
+    MPIR_REQUEST_PREALLOC };
 
 #undef FUNCNAME
 #define FUNCNAME MPIR_Progress_wait_request
