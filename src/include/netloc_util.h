@@ -54,4 +54,11 @@ int MPIR_Netloc_get_hostnode_index_in_tree(MPIR_Netloc_network_attributes attrib
                                            netloc_node_t * network_endpoint,
                                            int *index, int *num_nodes);
 
+void MPIR_Netloc_get_cart_graph_comm_matrix(int ndim, int *dim, int ** period, double ***comm_matrix);
+
+void MPIR_Netloc_get_mpi_graph_comm_matrix(int num_nodes, const int* index,
+	    const int* edges, double ***comm_matrix);
+
+int MPIR_Netloc_get_reordered_rank(int rank, int * newrank, int comm_size, double ** comm_matrix);
+
 #endif /* NETLOC_UTIL_H_INCLUDED */
