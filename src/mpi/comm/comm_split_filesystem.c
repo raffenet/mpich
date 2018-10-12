@@ -4,7 +4,9 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "mpioimpl.h"
+#include "mpiimpl.h"
+
+#include <fcntl.h>
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -14,8 +16,8 @@
 #include <dirent.h>
 #endif
 
-static int comm_split_filesystem_exhaustive(MPI_Comm comm, int key,
-                                            const char *dirname, MPI_Comm * newcomm)
+static int comm_split_filesystem_exhaustive(MPIR_Comm *comm, int key,
+                                            const char *dirname, MPIR_Comm *newcomm)
 {
     /* If you run this at scale against GPFS, be prepared to spend 30 mintues
      * creating 10,000 files -- and the numbers only get worse from there.
@@ -28,13 +30,14 @@ static int comm_split_filesystem_exhaustive(MPI_Comm comm, int key,
      *   POSIX.  */
     int rank, nprocs, ret;
     int *ranks;
-    MPI_Group comm_group, newgroup;
+    MPIR_Group *comm_group, *newgroup;
     int j = 0, mpi_errno = MPI_SUCCESS;
     char *filename = NULL, *testdirname = NULL;
     DIR *dir;
     struct dirent *entry;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &nprocs);
+
+    rank = MPIR_Comm_rank(comm);
+    nprocs = MPIR_Comm_size(comm);
 
     /* rank zero constructs the candidate directory name (just the
      * name).  Everyone will create the directory though -- this will be
@@ -48,7 +51,8 @@ static int comm_split_filesystem_exhaustive(MPI_Comm comm, int key,
     if (rank == 0)
         MPL_create_pathname(testdirname, dirname, ".commonfstest.0", 1);
 
-    MPI_Bcast(testdirname, PATH_MAX, MPI_BYTE, 0, comm);
+    MPIR_Errflag_t errflag = MPIR_ERR_NONE;
+    MPIR_Bcast(testdirname, PATH_MAX, MPI_BYTE, 0, comm, &errflag);
     /* ignore EEXIST: quite likely another process will have made this
      * directory, but since the whole point is to figure out who we share this
      * directory with, brute force it is! */
@@ -58,7 +62,7 @@ static int comm_split_filesystem_exhaustive(MPI_Comm comm, int key,
     MPL_snprintf(filename, PATH_MAX, "%s/%d", testdirname, rank);
     open(filename, O_CREAT, S_IRUSR | S_IWUSR);
 
-    MPI_Barrier(comm);
+    MPIR_Barrier(comm, &errflag);
     /* each process has created a file in a M-way shared directory (where M in
      * the range [1-nprocs]).  Let's see who else can see this directory */
     if ((dir = opendir(testdirname)) == NULL)
@@ -71,11 +75,11 @@ static int comm_split_filesystem_exhaustive(MPI_Comm comm, int key,
         ranks[j++] = atoi(entry->d_name);
     }
 
-    MPI_Comm_group(comm, &comm_group);
-    MPI_Group_incl(comm_group, j, ranks, &newgroup);
-    MPI_Comm_create(comm, newgroup, newcomm);
-    MPI_Group_free(&newgroup);
-    MPI_Group_free(&comm_group);
+    MPIR_Comm_group_impl(comm, &comm_group);
+    MPIR_Group_incl_impl(comm_group, j, ranks, &newgroup);
+    MPIR_Comm_create_group(comm, newgroup, 0, &newcomm);
+    MPIR_Group_free_impl(newgroup);
+    MPIR_Group_free_impl(comm_group);
 
     unlink(filename);
     /* ok to ignore errors */
@@ -90,8 +94,8 @@ static int comm_split_filesystem_exhaustive(MPI_Comm comm, int key,
     goto fn_exit;
 }
 
-static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
-                                           const char *dirname, MPI_Comm * newcomm)
+static int comm_split_filesystem_heuristic(MPIR_Comm *comm, int key,
+                                           const char *dirname, MPIR_Comm *newcomm)
 {
     int i, mpi_errno = MPI_SUCCESS;
     int rank, nprocs;
@@ -99,11 +103,11 @@ static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
     int32_t *all_ids;
     char *filename = NULL;
     int challenge_rank, globally_visible = 0;
-    MPI_Request check_req;
+    MPIR_Request *check_req;
 
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &nprocs);
-    MPIR_Get_node_id(comm, rank, &id);
+    rank = MPIR_Comm_rank(comm);
+    nprocs = MPIR_Comm_size(comm);
+    MPIR_Get_node_id(comm->handle, rank, &id);
 
     /* We could detect the common file systems by parsing 'df'-style
      * output, but that's fidgety, fragile, and error prone.  Instead,
@@ -133,7 +137,8 @@ static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
      * other than which created it */
     all_ids = MPL_malloc(nprocs * sizeof(*all_ids), MPL_MEM_IO);
 
-    mpi_errno = MPI_Gather(&id, 1, MPI_INT32_T, all_ids, 1, MPI_INT32_T, 0, comm);
+    MPIR_Errflag_t errflag = MPIR_ERR_NONE;
+    mpi_errno = MPIR_Gather(&id, 1, MPI_INT32_T, all_ids, 1, MPI_INT32_T, 0, comm, &errflag);
 
     if (rank == 0) {
         for (i = 0; i < nprocs; i++) {
@@ -147,7 +152,7 @@ static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
         else
             challenge_rank = i;
     }
-    mpi_errno = MPI_Bcast(&challenge_rank, 1, MPI_INT, 0, comm);
+    mpi_errno = MPIR_Bcast(&challenge_rank, 1, MPI_INT, 0, comm, &errflag);
 
     /* now that we've informally lumped everyone into groups based on node
      * (like shared memory does) it's time to poke the file system and see
@@ -176,37 +181,34 @@ static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
     if (rank == 0)
         MPL_create_pathname(filename, dirname, ".commonfstest.0", 0);
 
-    MPI_Bcast(filename, PATH_MAX, MPI_BYTE, 0, comm);
+    MPIR_Bcast(filename, PATH_MAX, MPI_BYTE, 0, comm, &errflag);
 
     if (rank == challenge_rank) {
-        MPI_Irecv(NULL, 0, MPI_BYTE, 0, 0, comm, &check_req);
+        MPID_Irecv(NULL, 0, MPI_BYTE, 0, 0, comm, MPIR_CONTEXT_INTRA_PT2PT, &check_req);
     }
 
     if (rank == 0) {
-        MPI_File fh;
-        mpi_errno = MPI_File_open(MPI_COMM_SELF, filename,
-                                  MPI_MODE_CREATE | MPI_MODE_EXCL | MPI_MODE_WRONLY,
-                                  MPI_INFO_NULL, &fh);
-        if (mpi_errno != MPI_SUCCESS)
+        int fh;
+        MPIR_Request *req;
+        fh = open(filename, O_CREAT | O_EXCL | O_WRONLY);
+        if (fh == -1)
             goto fn_exit;
-        MPI_File_close(&fh);
+        close(fh);
         /* the check for file has to happen after file created. only need one
          * process, though, not a full barrier */
-        MPI_Send(NULL, 0, MPI_BYTE, challenge_rank, 0, comm);
+        MPID_Send(NULL, 0, MPI_BYTE, challenge_rank, 0, comm, MPIR_CONTEXT_INTRA_PT2PT, &req);
+        if (req)
+            MPIR_Wait(&(req->handle), MPI_STATUS_IGNORE);
     }
 
     if (rank == challenge_rank) {
-        MPI_File fh;
+        int ret;
 
-        MPI_Wait(&check_req, MPI_STATUS_IGNORE);
+        MPIR_Wait(&(check_req->handle), MPI_STATUS_IGNORE);
 
-        /* too bad there's no ADIO equivalent of access: we'll have to
-         * open/close the file instead */
-
-        mpi_errno = MPI_File_open(MPI_COMM_SELF, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
-        if (mpi_errno == MPI_SUCCESS) {
+        ret = access(filename, R_OK);
+        if (ret == 0) {
             globally_visible = 1;
-            MPI_File_close(&fh);
         } else {
             /* do not report error up to caller.  we are merely testing the
              * presence of the file */
@@ -214,7 +216,7 @@ static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
             globally_visible = 0;
         }
     }
-    MPI_Bcast(&globally_visible, 1, MPI_INT, challenge_rank, comm);
+    MPIR_Bcast(&globally_visible, 1, MPI_INT, challenge_rank, comm, &errflag);
 
     /*   with the above assumptions, we have two cases for a flie
      *   created on one process:
@@ -224,12 +226,12 @@ static int comm_split_filesystem_heuristic(MPI_Comm comm, int key,
      *      accessable parallel file system) */
 
     if (globally_visible) {
-        MPI_Comm_dup(comm, newcomm);
+        MPIR_Comm_dup_impl(comm, &newcomm);
     } else {
-        MPI_Comm_split(comm, id, key, newcomm);
+        MPIR_Comm_split_impl(comm, id, key, &newcomm);
     }
     if (rank == 0)
-        MPI_File_delete(filename, MPI_INFO_NULL);
+        unlink(filename);
 
   fn_exit:
     MPL_free(all_ids);
@@ -250,11 +252,16 @@ int MPIR_Comm_split_filesystem(MPI_Comm comm, int key, const char *dirname, MPI_
 {
     int mpi_errno = MPI_SUCCESS;
     char *s;
+    MPIR_Comm *comm_ptr, *new_ptr;
+
+    MPIR_Comm_get_ptr(comm, comm_ptr);
     if ((s = getenv("MPIX_SPLIT_DISABLE_HEURISTIC")) != NULL) {
-        mpi_errno = comm_split_filesystem_exhaustive(comm, key, dirname, newcomm);
+        mpi_errno = comm_split_filesystem_exhaustive(comm_ptr, key, dirname, new_ptr);
     } else {
-        mpi_errno = comm_split_filesystem_heuristic(comm, key, dirname, newcomm);
+        mpi_errno = comm_split_filesystem_heuristic(comm_ptr, key, dirname, new_ptr);
     }
+    *newcomm = new_ptr->handle;
+
     return mpi_errno;
 }
 
