@@ -432,8 +432,9 @@ static int get_mpi_type_envelope(void *mpi_type, int *num_integers,
                                  hcoll_mpi_type_combiner_t * combiner)
 {
     int mpi_combiner;
+    MPI_Datatype dt_handle = (MPI_Datatype)mpi_type;
 
-    MPIR_Type_get_envelope(*((MPI_Datatype *) mpi_type),
+    MPIR_Type_get_envelope(dt_handle,
                            num_integers, num_addresses, num_datatypes, &mpi_combiner);
 
     *combiner = mpi_combiner_2_hcoll_combiner(mpi_combiner);
@@ -446,8 +447,9 @@ static int get_mpi_type_contents(void *mpi_type, int max_integers, int max_addre
                                  void *array_of_addresses, void *array_of_datatypes)
 {
     int ret;
+    MPI_Datatype dt_handle = (MPI_Datatype)mpi_type;
 
-    ret = MPIR_Type_get_contents(*((MPI_Datatype *) mpi_type),
+    ret = MPIR_Type_get_contents(dt_handle,
                                  max_integers, max_addresses, max_datatypes,
                                  array_of_integers,
                                  (MPI_Aint *) array_of_addresses,
@@ -458,16 +460,14 @@ static int get_mpi_type_contents(void *mpi_type, int max_integers, int max_addre
 
 static int get_hcoll_type(void *mpi_type, dte_data_representation_t * hcoll_type)
 {
+    MPI_Datatype dt_handle = (MPI_Datatype)mpi_type;
+    MPIR_Datatype *dt_ptr;
 
-    MPIR_Datatype *mpi_type_ptr;
+    MPIR_Datatype_get_ptr(dt_handle, dt_ptr);
 
-    MPIR_Datatype_get_ptr(*(MPI_Datatype *) mpi_type, mpi_type_ptr);
+    hcoll_type = &dt_ptr->dev.hcoll_datatype;
 
-    hcoll_type = &mpi_type_ptr->dev.hcoll_datatype;
-
-//     dte_data_representation_t data_rep = (dte_data_representation_t)mpi_type_ptr->dev->hcoll_datatype;
-
-    return HCOL_DTE_IS_ZERO(mpi_type_ptr->dev.hcoll_datatype) ? HCOLL_ERR_NOT_FOUND : HCOLL_SUCCESS;
+    return HCOL_DTE_IS_ZERO(dt_ptr->dev.hcoll_datatype) ? HCOLL_ERR_NOT_FOUND : HCOLL_SUCCESS;
 }
 
 static int set_hcoll_type(void *mpi_type, dte_data_representation_t hcoll_type)

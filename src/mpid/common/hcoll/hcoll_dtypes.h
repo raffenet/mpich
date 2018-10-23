@@ -135,7 +135,6 @@ static inline dte_data_representation_t mpi_predefined_derived_2_hcoll(MPI_Datat
 static dte_data_representation_t
 mpi_dtype_2_hcoll_dtype(MPI_Datatype datatype, int count, const int mode)
 {
-    MPIR_Datatype *dt_ptr;
     dte_data_representation_t dte_data_rep = DTE_ZERO;
 
     if (HANDLE_GET_KIND((datatype)) == HANDLE_KIND_BUILTIN) {
@@ -148,6 +147,8 @@ mpi_dtype_2_hcoll_dtype(MPI_Datatype datatype, int count, const int mode)
         /* Check for predefined derived types */
         dte_data_rep = mpi_predefined_derived_2_hcoll(datatype);
         if (HCOL_DTE_IS_ZERO(dte_data_rep)) {
+            MPIR_Datatype *dt_ptr;
+
             /* Must be a non-predefined derived mapping, get it */
             MPIR_Datatype_get_ptr(datatype, dt_ptr);
             dte_data_rep = (dte_data_representation_t) dt_ptr->dev.hcoll_datatype;
