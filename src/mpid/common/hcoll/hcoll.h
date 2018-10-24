@@ -27,6 +27,7 @@ int hcoll_comm_destroy(MPIR_Comm * comm, void *param);
 int hcoll_Barrier(MPIR_Comm * comm_ptr, MPIR_Errflag_t * err);
 int hcoll_Bcast(void *buffer, int count, MPI_Datatype datatype, int root,
                 MPIR_Comm * comm_ptr, MPIR_Errflag_t * err);
+int hcoll_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPIR_Comm * comm_ptr, MPIR_Errflag_t * err);
 int hcoll_Allgather(const void *sbuf, int scount, MPI_Datatype sdtype,
                     void *rbuf, int rcount, MPI_Datatype rdtype, MPIR_Comm * comm_ptr,
                     MPIR_Errflag_t * err);

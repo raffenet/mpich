@@ -54,6 +54,38 @@ int hcoll_Bcast(void *buffer, int count, MPI_Datatype datatype, int root,
 }
 
 #undef FUNCNAME
+#define FUNCNAME hcoll_Reduce
+#undef FCNAME
+#define FCNAME MPL_QUOTE(FUNCNAME)
+int hcoll_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, int root, MPIR_Comm * comm_ptr, MPIR_Errflag_t * err)
+{
+    dte_data_representation_t dtype;
+    hcoll_dte_op_t *Op;
+    int rc = -1;
+
+    if (!comm_ptr->hcoll_priv.is_hcoll_init)
+        return rc;
+
+    MPL_DBG_MSG(MPIR_DBG_HCOLL, VERBOSE, "RUNNING HCOLL REDUCE.");
+    dtype = mpi_dtype_2_hcoll_dtype(datatype, count, TRY_FIND_DERIVED);
+    Op = mpi_op_2_dte_op(op);
+    if (MPI_IN_PLACE == sendbuf) {
+        sendbuf = HCOLL_IN_PLACE;
+    }
+    if (HCOL_DTE_IS_COMPLEX(dtype) || HCOL_DTE_IS_ZERO(dtype) || (HCOL_DTE_OP_NULL == Op->id)) {
+        /*If we are here then datatype is not simple predefined datatype */
+        /*In future we need to add more complex mapping to the dte_data_representation_t */
+        /* Now use fallback */
+        MPL_DBG_MSG(MPIR_DBG_HCOLL, VERBOSE, "unsupported data layout, calling fallback bcast.");
+        rc = -1;
+    } else {
+        rc = hcoll_collectives.coll_reduce(sendbuf, recvbuf, count, dtype, Op, root,
+                                           comm_ptr->hcoll_priv.hcoll_context);
+    }
+    return rc;
+}
+
+#undef FUNCNAME
 #define FUNCNAME hcoll_Allreduce
 #undef FCNAME
 #define FCNAME MPL_QUOTE(FUNCNAME)
