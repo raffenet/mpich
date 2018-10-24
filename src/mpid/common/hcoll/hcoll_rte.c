@@ -463,11 +463,9 @@ static int get_hcoll_type(void *mpi_type, dte_data_representation_t * hcoll_type
     MPI_Datatype dt_handle = (MPI_Datatype)mpi_type;
     MPIR_Datatype *dt_ptr;
 
-    MPIR_Datatype_get_ptr(dt_handle, dt_ptr);
+    *hcoll_type = mpi_dtype_2_hcoll_dtype(dt_handle, -1, TRY_FIND_DERIVED);
 
-    hcoll_type = &dt_ptr->dev.hcoll_datatype;
-
-    return HCOL_DTE_IS_ZERO(dt_ptr->dev.hcoll_datatype) ? HCOLL_ERR_NOT_FOUND : HCOLL_SUCCESS;
+    return HCOL_DTE_IS_ZERO((*hcoll_type)) ? HCOLL_ERR_NOT_FOUND : HCOLL_SUCCESS;
 }
 
 static int set_hcoll_type(void *mpi_type, dte_data_representation_t hcoll_type)
