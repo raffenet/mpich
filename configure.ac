@@ -1452,16 +1452,8 @@ fi
 # HWLOC
 # ----------------------------------------------------------------------------
 # Allow the user to override the hwloc location (from embedded to user
-# path)
-# HWLOC
-AC_ARG_WITH([hwloc-prefix],
-            [AS_HELP_STRING([[--with-hwloc-prefix[=DIR]]],
-                            [use the HWLOC library installed in DIR,
-                             rather than the one included in src/hwloc.  Pass
-                             "embedded" to force usage of the HWLOC source
-                             distributed with MPICH.])],
-            [],dnl action-if-given
-            [with_hwloc_prefix=embedded]) dnl action-if-not-given
+# or system path)
+PAC_CHECK_PREFIX(hwloc)
 hwlocsrcdir=""
 AC_SUBST([hwlocsrcdir])
 hwloclibdir=""
@@ -1474,7 +1466,6 @@ if test "$with_hwloc_prefix" = "embedded" ; then
    PAC_PUSH_FLAG([enable_visibility])
    enable_visibility=no;
    HWLOC_SETUP_CORE([src/hwloc],[have_hwloc=yes],[have_hwloc=no],[1])
-   # Only build hwloc in embedded mode
    if test "$have_hwloc" = "yes" ; then
       use_embedded_hwloc=yes
       hwlocsrcdir="src/hwloc"
@@ -1486,30 +1477,17 @@ if test "$with_hwloc_prefix" = "embedded" ; then
    PAC_POP_FLAG([enable_visibility])
 else
    AC_CHECK_HEADERS([hwloc.h])
-   # hwloc_topology_set_pid was added in hwloc-1.0.0, which is our
-   # minimum required version
+   PAC_PUSH_FLAG([LIBS])
    AC_CHECK_LIB([hwloc],[hwloc_topology_set_pid])
+   PAC_POP_FLAG([LIBS])
    AC_MSG_CHECKING([if non-embedded hwloc works])
    if test "$ac_cv_header_hwloc_h" = "yes" -a "$ac_cv_lib_hwloc_hwloc_topology_set_pid" = "yes" ; then
       have_hwloc=yes
+      PAC_PREPEND_FLAG([-lhwloc], [WRAPPER_LIBS])
    else
       have_hwloc=no
    fi
    AC_MSG_RESULT([$have_hwloc])
-
-   # FIXME: Disable hwloc on Cygwin for now. The hwloc package,
-   # atleast as of 1.0.2, does not install correctly on Cygwin
-   AS_CASE([$host], [*-*-cygwin], [have_hwloc=no])
-
-   if test "$have_hwloc" = "yes" ; then
-      hwloclib="-lhwloc"
-      if test -d ${with_hwloc_prefix}/lib64 ; then
-         PAC_APPEND_FLAG([-L${with_hwloc_prefix}/lib64],[WRAPPER_LDFLAGS])
-         hwloclibdir="-L${with_hwloc_prefix}/lib64"
-      else
-	 hwloclibdir="-L${with_hwloc_prefix}/lib"
-      fi
-   fi
 fi
 
 if test "$have_hwloc" = "yes" ; then
@@ -1518,7 +1496,6 @@ fi
 
 HWLOC_DO_AM_CONDITIONALS
 AM_CONDITIONAL([have_hwloc], [test "${have_hwloc}" = "yes"])
-AM_CONDITIONAL([use_embedded_hwloc], [test "${use_embedded_hwloc}" = "yes"])
 
 # ----------------------------------------------------------------------------
 # NETLOC
