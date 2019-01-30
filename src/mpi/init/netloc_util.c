@@ -1727,7 +1727,7 @@ int MPIR_Netloc_get_switches_at_level(netloc_topology_t topology,
 void MPIR_Netloc_get_cart_graph_comm_matrix(int ndim, int *dim, int **period, double ***comm_matrix)
 {
     int i;
-    int **matrix;
+    double **matrix;
     int num_nodes = 1;
     for (i = 0; i < ndim; i++) {
         num_nodes *= dim[i];
@@ -1793,10 +1793,10 @@ void MPIR_Netloc_get_cart_graph_comm_matrix(int ndim, int *dim, int **period, do
 void MPIR_Netloc_get_mpi_graph_comm_matrix(int num_nodes, const int *index,
                                            const int *edges, double ***comm_matrix)
 {
-    int **matrix = (double **) MPL_calloc(num_nodes, sizeof(double *), MPL_MEM_OTHER);
+    double **matrix = (double **) MPL_calloc(num_nodes, sizeof(double *), MPL_MEM_OTHER);
     int i;
     for (i = 0; i < num_nodes; i++) {
-        matrix[i] = (double *) MPI_calloc(num_nodes, sizeof(double), MPL_MEM_OTHER);
+        matrix[i] = (double *) MPL_calloc(num_nodes, sizeof(double), MPL_MEM_OTHER);
         int current_node = i;
         int start_index = 0;
         int j;
@@ -1825,14 +1825,11 @@ int MPIR_Netloc_get_reordered_rank(int rank, int *newrank, int comm_size, double
     SCOTCH_Graph graph;
     netlocscotch_core_t *pcores;
 
-    comm_matrix_to_scotch_graph(comm_matrix, &graph);
-    pcores =
-        (netlocscotch_core_t *) MPL_calloc(comm_size, sizeof(netlocscotch_core_t), MPL_MEM_OTHER);
-    /* Using this instead of `netloc_arch_build` call because we don't need to specify the partition to which the graph is mapped */
-    netlocscotch_get_mapping_from_graph_topology_input(graph, MPIR_Process.netloc_topology,
-                                                       &pcores);
+    *newrank = MPI_UNDEFINED;
+
+    netlocscotch_get_mapping_from_comm_matrix(comm_matrix, comm_size, &pcores);
     for (i = 0; i < comm_size; i++) {
-        if (pcores[i]->rank == rank) {
+        if (pcores[i].rank == rank) {
             *newrank = pcores[i].core;
             break;
         }
