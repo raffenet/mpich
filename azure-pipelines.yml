@@ -17,6 +17,8 @@ jobs:
   pool:
     vmImage: 'ubuntu-latest'
 
+  container: raffenet/sandbox:latest
+
   steps:
   - script: |
       export MPICH_DEPS_PREFIX=$HOME/autotools
@@ -25,7 +27,7 @@ jobs:
       ./autogen.sh
     displayName: 'autogen'
   - script: |
-      ./configure --prefix=$PWD/i --disable-fortran $(device)
+      ./configure --prefix=$PWD/i $(device)
     displayName: 'configure'
   - script: |
       make -j2 install
