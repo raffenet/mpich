@@ -41,9 +41,9 @@ jobs:
   - checkout: self
     submodules: true
   - script: |
-      #export MPICH_DEPS_PREFIX=$HOME/autotools
-      #export PATH=$MPICH_DEPS_PREFIX/bin:$PATH
-      #./maint/bootstrap.sh
+      export MPICH_DEPS_PREFIX=$HOME/autotools
+      export PATH=$MPICH_DEPS_PREFIX/bin:$PATH
+      ./maint/bootstrap.sh
       ./autogen.sh
     displayName: 'autogen'
   - script: |
