@@ -47,7 +47,6 @@ jobs:
       ./configure --prefix=$PWD/i --disable-fortran
     displayName: 'configure'
   - script: |
-      system_profiler | grep Processor
       make -j2 install
     displayName: 'make'
   - script: |
