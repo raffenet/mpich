@@ -8,6 +8,12 @@ pr:
 
 jobs:
 - job: Linux
+  strategy:
+    matrix:
+      nemesis:
+        device: --with-device=ch3:nemesis
+      sock:
+        device: --with-device=ch3:sock
   pool:
     vmImage: 'ubuntu-latest'
 
@@ -19,7 +25,7 @@ jobs:
       ./autogen.sh
     displayName: 'autogen'
   - script: |
-      ./configure --prefix=$PWD/i --disable-fortran
+      ./configure --prefix=$PWD/i --disable-fortran $(device)
     displayName: 'configure'
   - script: |
       make -j2 install
@@ -29,6 +35,12 @@ jobs:
     displayName: 'cpi'
 
 - job: macOS
+  strategy:
+    matrix:
+      nemesis:
+        device: --with-device=ch3:nemesis
+      sock:
+        device: --with-device=ch3:sock
   pool:
     vmImage: 'macOS-10.14'
 
@@ -40,7 +52,7 @@ jobs:
       ./autogen.sh
     displayName: 'autogen'
   - script: |
-      ./configure --prefix=$PWD/i --disable-fortran
+      ./configure --prefix=$PWD/i --disable-fortran $(device)
     displayName: 'configure'
   - script: |
       make -j2 install
