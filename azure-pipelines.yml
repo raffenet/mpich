@@ -11,6 +11,8 @@ pool:
 
 steps:
 - script: |
+    ls
+- script: |
     export MPICH_DEPS_PREFIX=$HOME/autotools
     export PATH=$MPICH_DEPS_PREFIX:$PATH
     ./maint/bootstrap.sh
