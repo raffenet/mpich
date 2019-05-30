@@ -13,7 +13,7 @@ steps:
 - checkout: self
   submodules: true
 - script: |
-    apt-get update && apt-get install -y gfortran
+    sudo apt-get update && sudo apt-get install -y gfortran
   displayName: 'install dependencies'
 - script: |
     export MPICH_DEPS_PREFIX=$HOME/autotools
