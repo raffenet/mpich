@@ -17,7 +17,7 @@ jobs:
   pool:
     vmImage: 'ubuntu-latest'
 
-  container: raffenet/sandbox:latest
+  container: raffenet/sandbox:bionic
 
   steps:
   - script: |
