@@ -22,8 +22,12 @@ steps:
     ./autogen.sh
   displayName: 'autogen'
 - script: |
-    ./configure
+    ./configure --prefix=$PWD/i
   displayName: 'configure'
 - script: |
-    make -j
+    make -j install
   displayName: 'make'
+- script: |
+    cat /proc/cpuinfo
+    ./i/bin/mpiexec -n 2 ./examples/cpuinfo
+  displayName: 'cpi'
