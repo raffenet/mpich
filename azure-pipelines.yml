@@ -24,7 +24,7 @@ jobs:
       ./configure --prefix=$PWD/i --disable-fortran
     displayName: 'configure'
   - script: |
-      make -j install
+      make -j2 install
     displayName: 'make'
   - script: |
       ./i/bin/mpiexec -n 2 ./examples/cpi
@@ -47,7 +47,8 @@ jobs:
       ./configure --prefix=$PWD/i --disable-fortran
     displayName: 'configure'
   - script: |
-      make -j install
+      system_profiler | grep Processor
+      make -j2 install
     displayName: 'make'
   - script: |
       ./i/bin/mpiexec -n 2 ./examples/cpi
