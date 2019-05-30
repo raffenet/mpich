@@ -31,7 +31,13 @@ jobs:
     displayName: 'make'
   - script: |
       ./i/bin/mpiexec -n 2 ./examples/cpi
-    displayName: 'cpi'
+      cd test/mpi/attr
+      make testing
+    displayName: 'run'
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/summary.junit.xml'
 
 - job: macOS
   strategy:
