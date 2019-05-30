@@ -15,16 +15,13 @@ jobs:
   - checkout: self
     submodules: true
   - script: |
-      sudo apt-get update && sudo apt-get install -y gfortran
-    displayName: 'install dependencies'
-  - script: |
       export MPICH_DEPS_PREFIX=$HOME/autotools
       export PATH=$MPICH_DEPS_PREFIX/bin:$PATH
       ./maint/bootstrap.sh
       ./autogen.sh
     displayName: 'autogen'
   - script: |
-      ./configure --prefix=$PWD/i
+      ./configure --prefix=$PWD/i --disable-fortran
     displayName: 'configure'
   - script: |
       make -j install
@@ -47,7 +44,7 @@ jobs:
       ./autogen.sh
     displayName: 'autogen'
   - script: |
-      ./configure --prefix=$PWD/i
+      ./configure --prefix=$PWD/i --disable-fortran
     displayName: 'configure'
   - script: |
       make -j install
