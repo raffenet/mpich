@@ -28,6 +28,5 @@ steps:
     make -j install
   displayName: 'make'
 - script: |
-    cat /proc/cpuinfo
-    ./i/bin/mpiexec -n 2 ./examples/cpuinfo
+    ./i/bin/mpiexec -n 2 ./examples/cpi
   displayName: 'cpi'
