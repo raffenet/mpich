@@ -10,17 +10,17 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- script:
+- script: |
     export MPICH_DEPS_PREFIX=$HOME/autotools
     export PATH=$MPICH_DEPS_PREFIX:$PATH
     ./maint/bootstrap.sh
   displayName: 'bootstrap'
-- script:
+- script: |
     ./autogen.sh
   displayName: 'autogen'
-- script:
+- script: |
     ./configure
   displayName: 'configure'
-- script:
+- script: |
     make -j
   displayName: 'make'
