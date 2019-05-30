@@ -13,6 +13,9 @@ steps:
 - checkout: self
   submodules: true
 - script: |
+    apt-get update && apt-get install -y gfortran
+  displayName: 'install dependencies'
+- script: |
     export MPICH_DEPS_PREFIX=$HOME/autotools
     export PATH=$MPICH_DEPS_PREFIX/bin:$PATH
     ./maint/bootstrap.sh
