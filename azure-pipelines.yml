@@ -32,6 +32,7 @@ jobs:
   - script: |
       ./i/bin/mpiexec -n 2 ./examples/cpi
     displayName: 'cpi'
+
 - job: macOS
   pool:
     vmImage: 'macOS'
