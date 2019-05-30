@@ -12,8 +12,6 @@ jobs:
     vmImage: 'ubuntu-latest'
 
   steps:
-  - checkout: self
-    submodules: true
   - script: |
       export MPICH_DEPS_PREFIX=$HOME/autotools
       export PATH=$MPICH_DEPS_PREFIX/bin:$PATH
@@ -35,8 +33,6 @@ jobs:
     vmImage: 'macOS-10.14'
 
   steps:
-  - checkout: self
-    submodules: true
   - script: |
       export MPICH_DEPS_PREFIX=$HOME/autotools
       export PATH=$MPICH_DEPS_PREFIX/bin:$PATH
