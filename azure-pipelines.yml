@@ -7,21 +7,51 @@ pr:
   autoCancel: true
 
 jobs:
-- job: linux
+- job: ubuntu-bionic
   strategy:
     matrix:
       nemesis:
         device: --with-device=ch3:nemesis
       sock:
         device: --with-device=ch3:sock
-      bionic:
-        image: bionic
-      centos7
-        image: centos7
+
   pool:
     vmImage: 'ubuntu-latest'
 
-  container: raffenet/sandbox:$(image)
+  container: raffenet/sandbox:bionic
+
+  steps:
+  - script: |
+      ./autogen.sh
+    displayName: 'autogen'
+  - script: |
+      ./configure --prefix=$PWD/i $(device)
+    displayName: 'configure'
+  - script: |
+      make -j2 install
+    displayName: 'make'
+  - script: |
+      ./i/bin/mpiexec -n 2 ./examples/cpi
+      cd test/mpi/attr
+      make testing
+    displayName: 'run'
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/summary.junit.xml'
+
+- job: centos7
+  strategy:
+    matrix:
+      nemesis:
+        device: --with-device=ch3:nemesis
+      sock:
+        device: --with-device=ch3:sock
+
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  container: raffenet/sandbox:centos7
 
   steps:
   - script: |
