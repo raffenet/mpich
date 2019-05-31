@@ -7,7 +7,7 @@ pr:
   autoCancel: true
 
 jobs:
-- job: ubuntu-bionic
+- job: bionic
   strategy:
     matrix:
       nemesis:
