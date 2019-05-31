@@ -7,17 +7,22 @@ pr:
   autoCancel: true
 
 jobs:
-- job: Linux
+- job: linux
   strategy:
     matrix:
       nemesis:
         device: --with-device=ch3:nemesis
       sock:
         device: --with-device=ch3:sock
+    matrix:
+      bionic:
+        image: bionic
+      centos7
+        image: centos7
   pool:
     vmImage: 'ubuntu-latest'
 
-  container: raffenet/sandbox:bionic
+  container: raffenet/sandbox:$(image)
 
   steps:
   - script: |
