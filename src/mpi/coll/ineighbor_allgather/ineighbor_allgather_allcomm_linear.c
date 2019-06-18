@@ -38,17 +38,32 @@ int MPIR_Ineighbor_allgather_sched_allcomm_linear(const void *sendbuf, int sendc
     if (mpi_errno)
         MPIR_ERR_POP(mpi_errno);
 
-    for (k = 0; k < outdegree; ++k) {
-        mpi_errno = MPIR_Sched_send(sendbuf, sendcount, sendtype, dsts[k], comm_ptr, s);
-        if (mpi_errno)
-            MPIR_ERR_POP(mpi_errno);
-    }
+    MPIR_Topology *topo_ptr = MPIR_Topology_get(comm_ptr);
+    if (topo_ptr->kind == MPI_CART) {
+        for (k = 0; k < MPIR_Comm_size(comm_ptr); k++) {
+            if (topo_ptr->subcomms[k] && MPIR_Comm_rank(topo_ptr->subcomms[k]) == 0) {
+                MPIR_Ibcast_sched((void *)sendbuf, sendcount, sendtype, 0, topo_ptr->subcomms[k], s);
+            }
+        }
+        for (k = 0; k < indegree; k++) {
+            if (srcs[k] != MPI_PROC_NULL) {
+                char *rb = ((char *) recvbuf) + k * recvcount * recvtype_extent;
+                MPIR_Ibcast_sched(rb, recvcount, recvtype, 0, topo_ptr->subcomms[srcs[k]], s);
+            }
+        }
+    } else {
+        for (k = 0; k < outdegree; ++k) {
+            mpi_errno = MPIR_Sched_send(sendbuf, sendcount, sendtype, dsts[k], comm_ptr, s);
+            if (mpi_errno)
+                MPIR_ERR_POP(mpi_errno);
+        }
 
-    for (l = 0; l < indegree; ++l) {
-        char *rb = ((char *) recvbuf) + l * recvcount * recvtype_extent;
-        mpi_errno = MPIR_Sched_recv(rb, recvcount, recvtype, srcs[l], comm_ptr, s);
-        if (mpi_errno)
-            MPIR_ERR_POP(mpi_errno);
+        for (l = 0; l < indegree; ++l) {
+            char *rb = ((char *) recvbuf) + l * recvcount * recvtype_extent;
+            mpi_errno = MPIR_Sched_recv(rb, recvcount, recvtype, srcs[l], comm_ptr, s);
+            if (mpi_errno)
+                MPIR_ERR_POP(mpi_errno);
+        }
     }
 
     MPIR_SCHED_BARRIER(s);
