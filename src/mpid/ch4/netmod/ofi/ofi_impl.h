@@ -108,11 +108,6 @@ int MPIDI_OFI_progress(int vci, int blocking);
     } while (_ret == -FI_EAGAIN);                           \
     } while (0)
 
-#define MPIDI_OFI_CALL_RETURN(FUNC, _ret)                               \
-        do {                                                            \
-            (_ret) = FUNC;                                              \
-        } while (0)
-
 #define MPIDI_OFI_PMI_CALL_POP(FUNC,STR)                    \
   do                                                          \
     {                                                         \

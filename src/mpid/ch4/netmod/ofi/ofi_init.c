@@ -806,10 +806,8 @@ int MPIDI_OFI_mpi_init_hook(int rank, int size, int appnum, int *tag_bits, MPIR_
         tx_attr.caps = FI_RMA | FI_WRITE | FI_READ | FI_ATOMIC;
         tx_attr.msg_order = FI_ORDER_RAR | FI_ORDER_RAW | FI_ORDER_WAR | FI_ORDER_WAW;
         tx_attr.op_flags = FI_DELIVERY_COMPLETE | FI_COMPLETION;
-        MPIDI_OFI_CALL_RETURN(fi_stx_context(MPIDI_OFI_global.domain,
-                                             &tx_attr,
-                                             &MPIDI_OFI_global.rma_stx_ctx, NULL /* context */),
-                              ret);
+        ret = fi_stx_context(MPIDI_OFI_global.domain,
+                             &tx_attr, &MPIDI_OFI_global.rma_stx_ctx, NULL /* context */);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                         "Failed to create shared TX context for RMA, "

@@ -255,10 +255,10 @@ static int win_set_per_win_sync(MPIR_Win * win)
     memset(&cntr_attr, 0, sizeof(cntr_attr));
     cntr_attr.events = FI_CNTR_EVENTS_COMP;
     cntr_attr.wait_obj = FI_WAIT_UNSPEC;
-    MPIDI_OFI_CALL_RETURN(fi_cntr_open(MPIDI_OFI_global.domain, /* In:  Domain Object        */
-                                       &cntr_attr,      /* In:  Configuration object */
-                                       &MPIDI_OFI_WIN(win).cmpl_cntr,   /* Out: Counter Object       */
-                                       NULL), ret);     /* Context: counter events   */
+    ret = fi_cntr_open(MPIDI_OFI_global.domain, /* In:  Domain Object        */
+                       &cntr_attr,      /* In:  Configuration object */
+                       &MPIDI_OFI_WIN(win).cmpl_cntr,   /* Out: Counter Object       */
+                       NULL);   /* Context: counter events   */
     if (ret < 0) {
         MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE, "Failed to open completion counter.\n");
         mpi_errno = MPIDI_OFI_ENAVAIL;
@@ -267,9 +267,7 @@ static int win_set_per_win_sync(MPIR_Win * win)
 
     MPIDI_OFI_WIN(win).issued_cntr = &MPIDI_OFI_WIN(win).issued_cntr_v;
 
-    MPIDI_OFI_CALL_RETURN(fi_ep_bind
-                          (MPIDI_OFI_WIN(win).ep, &MPIDI_OFI_WIN(win).cmpl_cntr->fid,
-                           FI_READ | FI_WRITE), ret);
+    ret = fi_ep_bind(MPIDI_OFI_WIN(win).ep, &MPIDI_OFI_WIN(win).cmpl_cntr->fid, FI_READ | FI_WRITE);
 
     if (ret < 0) {
         MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
@@ -315,9 +313,7 @@ static int win_init_sep(MPIR_Win * win)
                     MPIR_CVAR_CH4_OFI_MAX_RMA_SEP_CTX);
         finfo->ep_attr->tx_ctx_cnt = MPIDI_OFI_global.max_rma_sep_tx_cnt;
 
-        MPIDI_OFI_CALL_RETURN(fi_scalable_ep
-                              (MPIDI_OFI_global.domain, finfo, &MPIDI_OFI_global.rma_sep, NULL),
-                              ret);
+        ret = fi_scalable_ep(MPIDI_OFI_global.domain, finfo, &MPIDI_OFI_global.rma_sep, NULL);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE, "Failed to create scalable endpoint.\n");
             MPIDI_OFI_global.rma_sep = NULL;
@@ -325,8 +321,7 @@ static int win_init_sep(MPIR_Win * win)
             goto fn_fail;
         }
 
-        MPIDI_OFI_CALL_RETURN(fi_scalable_ep_bind
-                              (MPIDI_OFI_global.rma_sep, &(MPIDI_OFI_global.av->fid), 0), ret);
+        ret = fi_scalable_ep_bind(MPIDI_OFI_global.rma_sep, &(MPIDI_OFI_global.av->fid), 0);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                         "Failed to bind scalable endpoint to address vector.\n");
@@ -350,9 +345,8 @@ static int win_init_sep(MPIR_Win * win)
         goto fn_fail;
     }
     /* Retrieve transmit context on scalable EP. */
-    MPIDI_OFI_CALL_RETURN(fi_tx_context
-                          (MPIDI_OFI_global.rma_sep, *idx, finfo->tx_attr,
-                           &(MPIDI_OFI_WIN(win).ep), NULL), ret);
+    ret = fi_tx_context
+        (MPIDI_OFI_global.rma_sep, *idx, finfo->tx_attr, &(MPIDI_OFI_WIN(win).ep), NULL);
     if (ret < 0) {
         MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                     "Failed to retrieve transmit context from scalable endpoint.\n");
@@ -364,9 +358,8 @@ static int win_init_sep(MPIR_Win * win)
     /* Pop this index out of reserving array. */
     utarray_pop_back(MPIDI_OFI_global.rma_sep_idx_array);
 
-    MPIDI_OFI_CALL_RETURN(fi_ep_bind(MPIDI_OFI_WIN(win).ep,
-                                     &MPIDI_OFI_global.ctx[0].cq->fid,
-                                     FI_TRANSMIT | FI_SELECTIVE_COMPLETION), ret);
+    ret = fi_ep_bind(MPIDI_OFI_WIN(win).ep,
+                     &MPIDI_OFI_global.ctx[0].cq->fid, FI_TRANSMIT | FI_SELECTIVE_COMPLETION);
     if (ret < 0) {
         MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                     "Failed to bind endpoint to completion queue.\n");
@@ -375,7 +368,7 @@ static int win_init_sep(MPIR_Win * win)
     }
 
     if (win_set_per_win_sync(win) == MPI_SUCCESS) {
-        MPIDI_OFI_CALL_RETURN(fi_enable(MPIDI_OFI_WIN(win).ep), ret);
+        ret = fi_enable(MPIDI_OFI_WIN(win).ep);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE, "Failed to activate endpoint.\n");
             mpi_errno = MPIDI_OFI_EPERROR;
@@ -438,8 +431,7 @@ static int win_init_stx(MPIR_Win * win)
 
     finfo->ep_attr->tx_ctx_cnt = FI_SHARED_CONTEXT;     /* Request a shared context */
     finfo->ep_attr->rx_ctx_cnt = 0;     /* We don't need RX contexts */
-    MPIDI_OFI_CALL_RETURN(fi_endpoint(MPIDI_OFI_global.domain,
-                                      finfo, &MPIDI_OFI_WIN(win).ep, NULL), ret);
+    ret = fi_endpoint(MPIDI_OFI_global.domain, finfo, &MPIDI_OFI_WIN(win).ep, NULL);
     if (ret < 0) {
         MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                     "Failed to create per-window EP using shared TX context, "
@@ -450,8 +442,7 @@ static int win_init_stx(MPIR_Win * win)
 
     if (win_set_per_win_sync(win) == MPI_SUCCESS) {
         have_per_win_cntr = true;
-        MPIDI_OFI_CALL_RETURN(fi_ep_bind
-                              (MPIDI_OFI_WIN(win).ep, &MPIDI_OFI_global.rma_stx_ctx->fid, 0), ret);
+        ret = fi_ep_bind(MPIDI_OFI_WIN(win).ep, &MPIDI_OFI_global.rma_stx_ctx->fid, 0);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                         "Failed to bind endpoint to shared transmit contxt.\n");
@@ -459,9 +450,8 @@ static int win_init_stx(MPIR_Win * win)
             goto fn_fail;
         }
 
-        MPIDI_OFI_CALL_RETURN(fi_ep_bind(MPIDI_OFI_WIN(win).ep,
-                                         &MPIDI_OFI_global.ctx[0].cq->fid,
-                                         FI_TRANSMIT | FI_SELECTIVE_COMPLETION), ret);
+        ret = fi_ep_bind(MPIDI_OFI_WIN(win).ep,
+                         &MPIDI_OFI_global.ctx[0].cq->fid, FI_TRANSMIT | FI_SELECTIVE_COMPLETION);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                         "Failed to bind endpoint to completion queue.\n");
@@ -469,7 +459,7 @@ static int win_init_stx(MPIR_Win * win)
             goto fn_fail;
         }
 
-        MPIDI_OFI_CALL_RETURN(fi_ep_bind(MPIDI_OFI_WIN(win).ep, &MPIDI_OFI_global.av->fid, 0), ret);
+        ret = fi_ep_bind(MPIDI_OFI_WIN(win).ep, &MPIDI_OFI_global.av->fid, 0);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE,
                         "Failed to bind endpoint to address vector.\n");
@@ -477,7 +467,7 @@ static int win_init_stx(MPIR_Win * win)
             goto fn_fail;
         }
 
-        MPIDI_OFI_CALL_RETURN(fi_enable(MPIDI_OFI_WIN(win).ep), ret);
+        ret = fi_enable(MPIDI_OFI_WIN(win).ep);
         if (ret < 0) {
             MPL_DBG_MSG(MPIDI_CH4_DBG_GENERAL, VERBOSE, "Failed to activate endpoint.\n");
             mpi_errno = MPIDI_OFI_EPERROR;
