@@ -30,5 +30,5 @@ before_script:
 
 script:
   - ./autogen.sh
-  - ./configure --prefix=$PWD/i --with-device=$DEVICE $MPICH_FORTRAN
+  - ./configure --prefix=$PWD/i --with-device=$DEVICE $MPICH_FORTRAN --enable-g=dbg CFLAGS="-fsanitize=address"
   - make -j2 install
