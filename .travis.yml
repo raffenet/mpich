@@ -32,3 +32,4 @@ script:
   - ./autogen.sh
   - ./configure --prefix=$PWD/i --with-device=$DEVICE $MPICH_FORTRAN --enable-g=dbg CFLAGS="-fsanitize=address"
   - make -j2 install
+  - i/bin/mpiexec -n 2 ./examples/cpi
