@@ -1,0 +1,25 @@
+name: MPICH Build
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: uname -a
+      run: uname -a
+    - name: install gfortran
+      run: sudo apt-get install gfortran
+    - name: autogen
+      run: ./autogen.sh
+    - name: configure
+      run: ./configure --prefix=$PWD/i
+    - name: make
+      run: make -j install
+    - name: cpi
+      run: i/bin/mpiexec -n 2 ./examples/cpi
