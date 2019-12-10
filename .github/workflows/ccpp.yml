@@ -5,16 +5,19 @@ on: [push]
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-16.04]
 
     steps:
+    - name: install gfortran
+      run: sudo apt-get install gfortran
     - uses: actions/checkout@v1
       with:
         submodules: true
     - name: uname -a
       run: uname -a
-    - name: install gfortran
-      run: sudo apt-get install gfortran
     - name: autogen
       run: ./autogen.sh
     - name: configure
