@@ -20,13 +20,13 @@ jobs:
     - uses: actions/checkout@v1
       with:
         submodules: true
-    - name: uname -a
-      run: uname -a
     - name: autogen
       run: ./autogen.sh
     - name: configure
       run: ./configure --prefix=$PWD/i
     - name: make
-      run: make -j install
+      run: make -j 2
+    - name: make install
+      run: make install
     - name: cpi
       run: i/bin/mpiexec -n 2 ./examples/cpi
