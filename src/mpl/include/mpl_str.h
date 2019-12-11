@@ -15,16 +15,6 @@ extern "C" {
 #endif
 /* *INDENT-OFF* */
 
-#if defined MPL_NEEDS_SNPRINTF_DECL
-extern int snprintf(char *, size_t, const char *, ...) ATTRIBUTE((format(printf,3,4)));
-#endif
-
-#if defined MPL_HAVE_SNPRINTF
-#define MPL_snprintf snprintf
-#else
-int MPL_snprintf(char *, size_t, const char *, ...) ATTRIBUTE((format(printf,3,4)));
-#endif /* MPL_HAVE_SNPRINTF */
-
 int MPL_strncpy(char *dest, const char *src, size_t n);
 char *MPL_strsep(char **stringp, const char *delim);
 
