@@ -76,7 +76,7 @@ HYD_status sge_get_path(char **path)
         if (sge_root && arc) {
             length = strlen(sge_root) + strlen("/bin/") + strlen(arc) + 1 + strlen("qrsh") + 1;
             HYD_MALLOC((*path), char *, length, status);
-            MPL_snprintf(*path, length, "%s/bin/%s/qrsh", sge_root, arc);
+            snprintf(*path, length, "%s/bin/%s/qrsh", sge_root, arc);
         }
     }
     if (*path == NULL)

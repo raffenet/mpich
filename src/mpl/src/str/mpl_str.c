@@ -411,9 +411,9 @@ void MPL_create_pathname(char *dest_filename, const char *dirname,
     const unsigned int pid = (unsigned int) getpid();
 
     if (dirname) {
-        MPL_snprintf(dest_filename, PATH_MAX, "%s/%s.%u.%u%c", dirname, prefix,
+        snprintf(dest_filename, PATH_MAX, "%s/%s.%u.%u%c", dirname, prefix,
                      rdm, pid, is_dir ? '/' : '\0');
     } else {
-        MPL_snprintf(dest_filename, PATH_MAX, "%s.%u.%u%c", prefix, rdm, pid, is_dir ? '/' : '\0');
+        snprintf(dest_filename, PATH_MAX, "%s.%u.%u%c", prefix, rdm, pid, is_dir ? '/' : '\0');
     }
 }

@@ -587,7 +587,7 @@ int MPIDI_OFI_mpi_init_hook(int rank, int size, int appnum, int *tag_bits, MPIR_
     /* vector attribute structure.                                              */
     /* ------------------------------------------------------------------------ */
     char av_name[128];
-    MPL_snprintf(av_name, sizeof(av_name), "FI_NAMED_AV_%d\n", appnum);
+    snprintf(av_name, sizeof(av_name), "FI_NAMED_AV_%d\n", appnum);
     av_attr.name = av_name;
     av_attr.flags = FI_READ;
     av_attr.map_addr = 0;

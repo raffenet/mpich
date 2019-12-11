@@ -20,7 +20,7 @@ HYD_status HYD_print_set_prefix_str(const char *str)
     if (gethostname(hostname, HYD_MAX_HOSTNAME_LEN) < 0)
         HYD_ERR_SETANDJUMP(status, HYD_ERR_SOCK, "unable to get local host name\n");
 
-    MPL_snprintf(HYD_print_prefix_str, strlen(hostname) + 1 + strlen(str) + 1, "%s@%s", str,
+    snprintf(HYD_print_prefix_str, strlen(hostname) + 1 + strlen(str) + 1, "%s@%s", str,
                  hostname);
 
   fn_exit:

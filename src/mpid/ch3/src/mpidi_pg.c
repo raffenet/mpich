@@ -535,7 +535,7 @@ int MPIDI_PG_SetConnInfo( int rank, const char *connString )
 
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_PG_SetConnInfo);
 
-    len = MPL_snprintf(key, sizeof(key), "P%d-businesscard", rank);
+    len = snprintf(key, sizeof(key), "P%d-businesscard", rank);
     MPIR_ERR_CHKANDJUMP1(len < 0 || len > sizeof(key), mpi_errno, MPI_ERR_OTHER, "**snprintf", "**snprintf %d", len);
 
     mpi_errno = PMI2_KVS_Put(key, connString);
@@ -560,7 +560,7 @@ int MPIDI_PG_SetConnInfo( int rank, const char *connString )
 
     MPIR_Assert(pg_world->connData);
     
-    len = MPL_snprintf(key, sizeof(key), "P%d-businesscard", rank);
+    len = snprintf(key, sizeof(key), "P%d-businesscard", rank);
     if (len < 0 || len > sizeof(key)) {
 	MPIR_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER, "**snprintf",
 			     "**snprintf %d", len);
@@ -618,7 +618,7 @@ static int getConnInfoKVS( int rank, char *buf, int bufsize, MPIDI_PG_t *pg )
     int  mpi_errno = MPI_SUCCESS, rc;
     int vallen;
 
-    rc = MPL_snprintf(key, MPIDI_MAX_KVS_KEY_LEN, "P%d-businesscard", rank );
+    rc = snprintf(key, MPIDI_MAX_KVS_KEY_LEN, "P%d-businesscard", rank );
     if (rc < 0 || rc > MPIDI_MAX_KVS_KEY_LEN) {
 	MPIR_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**nomem");
     }
@@ -637,7 +637,7 @@ static int getConnInfoKVS( int rank, char *buf, int bufsize, MPIDI_PG_t *pg )
     char key[MPIDI_MAX_KVS_KEY_LEN];
     int  mpi_errno = MPI_SUCCESS, rc, pmi_errno;
 
-    rc = MPL_snprintf(key, MPIDI_MAX_KVS_KEY_LEN, "P%d-businesscard", rank );
+    rc = snprintf(key, MPIDI_MAX_KVS_KEY_LEN, "P%d-businesscard", rank );
     if (rc < 0 || rc > MPIDI_MAX_KVS_KEY_LEN) {
 	MPIR_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**nomem");
     }
@@ -683,7 +683,7 @@ static int connToStringKVS( char **buf_p, int *slen, MPIDI_PG_t *pg )
     string[len++] = 0;
     
     /* Add the size of the pg */
-    MPL_snprintf( &string[len], curSlen - len, "%d", pg->size );
+    snprintf( &string[len], curSlen - len, "%d", pg->size );
     while (string[len]) len++;
     len++;
 
@@ -872,7 +872,7 @@ static int connToString( char **buf_p, int *slen, MPIDI_PG_t *pg )
     while (*pg_id) str[len++] = *pg_id++;
     str[len++] = 0;
     
-    MPL_snprintf( &str[len], 20, "%d", pg->size);
+    snprintf( &str[len], 20, "%d", pg->size);
     /* Skip over the length */
     while (str[len++]);
 

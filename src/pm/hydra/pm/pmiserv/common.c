@@ -140,7 +140,7 @@ HYD_status HYD_pmcd_pmi_allocate_kvs(struct HYD_pmcd_pmi_kvs ** kvs, int pgid)
     rnd = rand();
 
     HYDU_MALLOC_OR_JUMP(*kvs, struct HYD_pmcd_pmi_kvs *, sizeof(struct HYD_pmcd_pmi_kvs), status);
-    MPL_snprintf((*kvs)->kvsname, PMI_MAXKVSLEN, "kvs_%d_%d_%d_%s", (int) getpid(), pgid, rnd,
+    snprintf((*kvs)->kvsname, PMI_MAXKVSLEN, "kvs_%d_%d_%d_%s", (int) getpid(), pgid, rnd,
                  hostname);
     (*kvs)->key_pair = NULL;
     (*kvs)->tail = NULL;
@@ -179,8 +179,8 @@ HYD_status HYD_pmcd_pmi_add_kvs(const char *key, char *val, struct HYD_pmcd_pmi_
 
     HYDU_MALLOC_OR_JUMP(key_pair, struct HYD_pmcd_pmi_kvs_pair *,
                         sizeof(struct HYD_pmcd_pmi_kvs_pair), status);
-    MPL_snprintf(key_pair->key, PMI_MAXKEYLEN, "%s", key);
-    MPL_snprintf(key_pair->val, PMI_MAXVALLEN, "%s", val);
+    snprintf(key_pair->key, PMI_MAXKEYLEN, "%s", key);
+    snprintf(key_pair->val, PMI_MAXVALLEN, "%s", val);
     key_pair->next = NULL;
 
     *ret = 0;

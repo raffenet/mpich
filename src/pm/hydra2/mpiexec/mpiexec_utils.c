@@ -159,18 +159,18 @@ static HYD_status resolve_pattern_string(const char *pattern, char **str, int pg
 
             switch (pattern[pos]) {
                 case 'r':
-                    MPL_snprintf(tmp[i], HYD_TMP_STRLEN, "%d", rank);
+                    snprintf(tmp[i], HYD_TMP_STRLEN, "%d", rank);
                     break;
                 case 'g':
-                    MPL_snprintf(tmp[i], HYD_TMP_STRLEN, "%d", pgid);
+                    snprintf(tmp[i], HYD_TMP_STRLEN, "%d", pgid);
                     break;
                 case 'p':
-                    MPL_snprintf(tmp[i], HYD_TMP_STRLEN, "%d", proxy_id);
+                    snprintf(tmp[i], HYD_TMP_STRLEN, "%d", proxy_id);
                     break;
                 case 'h':
                     HASH_FIND_INT(mpiexec_pg_hash, &pgid, pg);
                     HYD_ASSERT(pg, status);
-                    MPL_snprintf(tmp[i], HYD_TMP_STRLEN, "%s", pg->node_list[proxy_id].hostname);
+                    snprintf(tmp[i], HYD_TMP_STRLEN, "%s", pg->node_list[proxy_id].hostname);
                     break;
                 case '\0':
                     HYD_ERR_SETANDJUMP(status, HYD_ERR_INTERNAL,

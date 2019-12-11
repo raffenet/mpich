@@ -61,7 +61,7 @@ static void dump_context_id(MPIR_Context_id_t context_id, char *out_str, int len
             MPIR_Assert(FALSE);
             break;
     }
-    MPL_snprintf(out_str, len,
+    snprintf(out_str, len,
                  "context_id=%d (%#x): DYNAMIC_PROC=%d PREFIX=%#x IS_LOCALCOMM=%d SUBCOMM=%s SUFFIX=%s",
                  context_id,
                  context_id,
@@ -98,7 +98,7 @@ static char *context_mask_to_str(void)
     }
 
     for (i = 0; i < maxset; i++) {
-        MPL_snprintf(&bufstr[i * 8], 9, "%.8x", context_mask[i]);
+        snprintf(&bufstr[i * 8], 9, "%.8x", context_mask[i]);
     }
     return bufstr;
 }

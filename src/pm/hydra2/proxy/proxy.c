@@ -611,7 +611,7 @@ int main(int argc, char **argv)
     HYD_MALLOC(proxy_pmi_ids, int **,
                (proxy_params.immediate.proxy.num_children + 1) * sizeof(int *), status);
 
-    MPL_snprintf(dbg_prefix, 2 * HYD_MAX_HOSTNAME_LEN, "proxy:%d:%d", proxy_params.all.pgid,
+    snprintf(dbg_prefix, 2 * HYD_MAX_HOSTNAME_LEN, "proxy:%d:%d", proxy_params.all.pgid,
                  proxy_params.root.proxy_id);
     status = HYD_print_set_prefix_str((const char *) dbg_prefix);
     HYD_ERR_POP(status, "unable to set dbg prefix\n");

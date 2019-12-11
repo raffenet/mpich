@@ -53,7 +53,7 @@ HYD_status HYD_str_alloc_and_join(char **strlist, char **strjoin)
     (*strjoin)[0] = 0;
 
     for (i = 0; strlist[i] != NULL; i++) {
-        MPL_snprintf(*strjoin + count, len - count + 1, "%s", strlist[i]);
+        snprintf(*strjoin + count, len - count + 1, "%s", strlist[i]);
         count += strlen(strlist[i]);
     }
 
@@ -132,7 +132,7 @@ char *HYD_str_from_int_pad(int x, int maxlen)
     for (i = 0; i < actual_len; i++)
         str[i] = '0';
 
-    MPL_snprintf(str + actual_len - len - 1, len + 1, "%d", x);
+    snprintf(str + actual_len - len - 1, len + 1, "%d", x);
 
   fn_exit:
     HYD_FUNC_EXIT();

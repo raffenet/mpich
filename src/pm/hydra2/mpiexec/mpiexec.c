@@ -499,7 +499,7 @@ static HYD_status initiate_process_launch(struct mpiexec_pg *pg)
     HYD_status status = HYD_SUCCESS;
 
     HYD_MALLOC(kvsname, char *, PMI_MAXKVSLEN, status);
-    MPL_snprintf(kvsname, PMI_MAXKVSLEN, "kvs_%d_0", (int) getpid());
+    snprintf(kvsname, PMI_MAXKVSLEN, "kvs_%d_0", (int) getpid());
 
     MPL_VG_MEM_INIT(&cmd, sizeof(cmd));
     cmd.type = MPX_CMD_TYPE__KVSNAME;

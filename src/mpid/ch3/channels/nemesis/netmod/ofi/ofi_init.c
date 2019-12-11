@@ -212,7 +212,7 @@ int MPID_nem_ofi_init(MPIDI_PG_t * pg_p, int pg_rank, char **bc_val_p, int *val_
     /* to the KVS                       */
     /* -------------------------------- */
     PMI_RC(PMI_KVS_Get_my_name(kvsname, MPIDI_OFI_KVSAPPSTRLEN), pmi);
-    MPL_snprintf(key, sizeof(key), "OFI-%d", pg_rank);
+    snprintf(key, sizeof(key), "OFI-%d", pg_rank);
 
     PMI_RC(PMI_KVS_Put(kvsname, key, my_bc), pmi);
     PMI_RC(PMI_KVS_Commit(kvsname), pmi);
@@ -238,7 +238,7 @@ int MPID_nem_ofi_init(MPIDI_PG_t * pg_p, int pg_rank, char **bc_val_p, int *val_
                         MPL_MEM_ADDRESS);
 
     for (i = 0; i < pg_p->size; ++i) {
-        MPL_snprintf(key, sizeof(key), "OFI-%d", i);
+        snprintf(key, sizeof(key), "OFI-%d", i);
 
         PMI_RC(PMI_KVS_Get(kvsname, key, bc, MPIDI_OFI_KVSAPPSTRLEN), pmi);
         ret = MPL_str_get_binary_arg(bc, "OFI",

@@ -13,7 +13,7 @@
 #include "mpi.h"
 
 #include "mpichconf.h"
-#include "mpir_mem.h"   /* for MPL_snprintf */
+#include "mpir_mem.h"   /* for snprintf */
 #include "rlog.h"
 #include <math.h>
 #include <stdlib.h>
@@ -112,7 +112,7 @@ static char *get_random_color_str(void)
 {
     unsigned char r, g, b;
     random_color(&r, &g, &b);
-    MPL_snprintf(random_color_str, sizeof(random_color_str),
+    snprintf(random_color_str, sizeof(random_color_str),
                  "%3d %3d %3d", (int) r, (int) g, (int) b);
     return random_color_str;
 }

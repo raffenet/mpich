@@ -15,7 +15,7 @@
 #include <errno.h>
 #include <ctype.h>      /* isdigit */
 #include "mpichconf.h"  /* HAVE_SNPRINTF */
-#include "mpir_mem.h"   /* MPL_snprintf */
+#include "mpir_mem.h"   /* snprintf */
 
 #ifndef BOOL
 #define BOOL int
@@ -283,7 +283,7 @@ RecursionStruct *GetLevel(int rank, int recursion)
     }
 
     pLevel = (RecursionStruct *) MPL_malloc(sizeof(RecursionStruct), MPL_MEM_DEBUG);
-    MPL_snprintf(pLevel->filename, 1024 * sizeof(char), "irlog.%d.%d.tmp", rank, recursion);
+    snprintf(pLevel->filename, 1024 * sizeof(char), "irlog.%d.%d.tmp", rank, recursion);
     pLevel->fout = fopen(pLevel->filename, "w+b");
     pLevel->rank = rank;
     pLevel->level = recursion;
@@ -545,14 +545,14 @@ void GenerateNewArgv(int *pargc, char ***pargv, int n)
     str = buffer + (sizeof(char *) * (n + 4));
     argv[0] = str;
     str_sz = (length + (n + 4)) * sizeof(char);
-    str += MPL_snprintf(str, str_sz, "%s", (*pargv)[0]);
+    str += snprintf(str, str_sz, "%s", (*pargv)[0]);
     *str++ = '\0';
     argv[1] = str;
-    str += MPL_snprintf(str, str_sz, "%s", (*pargv)[1]);
+    str += snprintf(str, str_sz, "%s", (*pargv)[1]);
     *str++ = '\0';
     for (i = 0; i < n; i++) {
         argv[i + 2] = str;
-        str += MPL_snprintf(str, str_sz, "log%d.irlog", i);
+        str += snprintf(str, str_sz, "log%d.irlog", i);
         *str++ = '\0';
     }
     argv[n + 3] = NULL;

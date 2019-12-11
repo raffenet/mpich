@@ -336,7 +336,7 @@ int main(int argc, char **argv)
     status = get_params(argc, argv);
     HYD_ERR_POP(status, "Error initializing bstrap params\n");
 
-    MPL_snprintf(dbg_prefix, 2 * HYD_MAX_HOSTNAME_LEN, "bstrap:%d:%d", pgid, proxy_id);
+    snprintf(dbg_prefix, 2 * HYD_MAX_HOSTNAME_LEN, "bstrap:%d:%d", pgid, proxy_id);
     status = HYD_print_set_prefix_str((const char *) dbg_prefix);
     HYD_ERR_POP(status, "unable to set dbg prefix\n");
 

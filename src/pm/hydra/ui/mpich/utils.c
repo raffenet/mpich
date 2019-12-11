@@ -246,7 +246,7 @@ static HYD_status genvlist_fn(char *arg, char ***argv)
 
     len = strlen("list:") + strlen(**argv) + 1;
     HYDU_MALLOC_OR_JUMP(HYD_server_info.user_global.global_env.prop, char *, len, status);
-    MPL_snprintf(HYD_server_info.user_global.global_env.prop, len, "list:%s", **argv);
+    snprintf(HYD_server_info.user_global.global_env.prop, len, "list:%s", **argv);
 
   fn_exit:
     (*argv)++;
@@ -685,7 +685,7 @@ static HYD_status envlist_fn(char *arg, char ***argv)
 
     len = strlen("list:") + strlen(**argv) + 1;
     HYDU_MALLOC_OR_JUMP(exec->env_prop, char *, len, status);
-    MPL_snprintf(exec->env_prop, len, "list:%s", **argv);
+    snprintf(exec->env_prop, len, "list:%s", **argv);
     (*argv)++;
 
   fn_exit:
@@ -1700,7 +1700,7 @@ HYD_status HYD_uii_mpx_get_parameters(char **t_argv)
             len = strlen(home) + strlen("/.mpiexec.hydra.conf") + 1;
 
             HYDU_MALLOC_OR_JUMP(conf_file, char *, len, status);
-            MPL_snprintf(conf_file, len, "%s/.mpiexec.hydra.conf", home);
+            snprintf(conf_file, len, "%s/.mpiexec.hydra.conf", home);
 
             ret = open(conf_file, O_RDONLY);
             if (ret < 0) {

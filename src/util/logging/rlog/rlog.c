@@ -13,7 +13,7 @@
 #include "mpl.h"        /* MPL_error_printf */
 
 #include "mpichconf.h"  /* HAVE_SNPRINTF */
-#include "mpir_mem.h"   /* MPL_snprintf */
+#include "mpir_mem.h"   /* snprintf */
 
 #include "mpi.h"
 /*#define RLOG_timestamp PMPI_Wtime*/
@@ -72,7 +72,7 @@ RLOG_Struct *RLOG_InitLog(int rank, int size)
     pRLOG->nRecursion = 0;
     pRLOG->nCurEventId = RLOG_FIRST_EVENT_ID;
     pRLOG->dFirstTimestamp = 0.0;
-    MPL_snprintf(pRLOG->pszFileName, 256, "log%d.irlog", rank);
+    snprintf(pRLOG->pszFileName, 256, "log%d.irlog", rank);
 
     pRLOG->pOutput = NULL;
     pRLOG->pOutput = IRLOG_CreateOutputStruct(pRLOG->pszFileName);
@@ -365,7 +365,7 @@ static char *get_random_color_str(void)
 {
     unsigned char r, g, b;
     random_color(&r, &g, &b);
-    MPL_snprintf(random_color_str, MAX_RANDOM_COLOR_STR, "%3d %3d %3d", (int) r, (int) g, (int) b);
+    snprintf(random_color_str, MAX_RANDOM_COLOR_STR, "%3d %3d %3d", (int) r, (int) g, (int) b);
     return random_color_str;
 }
 

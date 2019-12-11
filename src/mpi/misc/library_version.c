@@ -65,7 +65,7 @@ int MPI_Get_library_version(char *version, int *resultlen)
 
     /* ... body of routine ...  */
 
-    MPL_snprintf(version, MPI_MAX_LIBRARY_VERSION_STRING,
+    snprintf(version, MPI_MAX_LIBRARY_VERSION_STRING,
                  "MPICH Version:\t%s\n"
                  "MPICH Release date:\t%s\n"
                  "MPICH ABI:\t%s\n"

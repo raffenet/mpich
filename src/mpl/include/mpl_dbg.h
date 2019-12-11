@@ -71,7 +71,7 @@
     {                                                                   \
         if ((_class & MPL_dbg_active_classes) && MPL_DBG_##_level <= MPL_dbg_max_level) { \
             char _s[MPL_DBG_MAXLINE];                                   \
-            int _ret = MPL_snprintf _fmatargs ;                          \
+            int _ret = snprintf _fmatargs ;                          \
             /* by checking _ret, we supress -Wformat-trunction in gcc-8 */ \
             assert(_ret >= 0);                                          \
             MPL_dbg_outevent(__FILE__, __LINE__, _class, 0, "%s", _s);  \
@@ -91,7 +91,7 @@
 #define MPL_DBG_OUT_FMT(_class,_fmatargs)                               \
     {                                                                   \
         char _s[MPL_DBG_MAXLINE];                                       \
-        MPL_snprintf _fmatargs ;                                        \
+        snprintf _fmatargs ;                                        \
         MPL_dbg_outevent(__FILE__, __LINE__, _class, 0, "%s", _s);      \
     }
 
