@@ -263,7 +263,7 @@ static inline int MPIDI_OFI_nopack_putget(const void *origin_addr, int origin_co
         msg.rma_iov_count = 1;
         iov.iov_base = origin_iov[origin_cur].iov_base;
         iov.iov_len = msg_len;
-        riov.addr = (uint64_t) target_iov[target_cur].iov_base;
+        riov.addr = (uint64_t) (uintptr_t) target_iov[target_cur].iov_base;
         riov.len = msg_len;
         riov.key = MPIDI_OFI_winfo_mr_key(win, target_rank);
         MPIDI_OFI_INIT_CHUNK_CONTEXT(win, sigreq);
