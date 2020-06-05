@@ -174,6 +174,7 @@ if test "X${have_cuda}" = "Xyes" ; then
         cuda_LIBS="-lcudart"
     fi
 fi
+AM_CONDITIONAL([HAVE_CUDA],[test "X${have_cuda}" = "Xyes"])
 AC_SUBST([cudainc])
 AC_SUBST([cudalib])
 AC_SUBST([cudart])
