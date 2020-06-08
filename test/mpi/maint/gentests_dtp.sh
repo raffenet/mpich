@@ -158,9 +158,21 @@ while read -r line ; do
                     echo "${testname} $procs arg=-type=${type} arg=-sendcnt=${sendcount} arg=-recvcnt=${recvcount} arg=-seed=$seed arg=-testsize=${gputestsize} ${other_args} arg=-sendmem=device arg=-recvmem=device $timelimit" >> ${builddir}/${testdir}/testlist.gpu
                     seed=$((seed + 1))
                 done
-            else
-                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${testsize} ${other_args} $timelimit" >> ${builddir}/${testdir}/testlist.dtp
+            elif [ $testdir = "rma" ] ; then
+                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${testsize} ${other_args} arg=-origmem=host arg=-targetmem=host $timelimit" >> ${builddir}/${testdir}/testlist.dtp
                 seed=$((seed + 1))
+                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${gputestsize} ${other_args} arg=-origmem=host arg=-targetmem=device $timelimit" >> ${builddir}/${testdir}/testlist.gpu
+                seed=$((seed + 1))
+                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${gputestsize} ${other_args} arg=-origmem=reg_host arg=-targetmem=device $timelimit" >> ${builddir}/${testdir}/testlist.gpu
+                seed=$((seed + 1))
+                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${gputestsize} ${other_args} arg=-origmem=device arg=-targetmem=host $timelimit" >> ${builddir}/${testdir}/testlist.gpu
+                seed=$((seed + 1))
+                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${gputestsize} ${other_args} arg=-origmem=device arg=-targetmem=reg_host $timelimit" >> ${builddir}/${testdir}/testlist.gpu
+                seed=$((seed + 1))
+                echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${gputestsize} ${other_args} arg=-origmem=device arg=-targetmem=device $timelimit" >> ${builddir}/${testdir}/testlist.gpu
+                seed=$((seed + 1))
+            else
+		echo "${testname} $procs arg=-type=${type} arg=-count=${sendcount} arg=-seed=$seed arg=-testsize=${testsize} ${other_args} $timelimit" >> ${builddir}/${testdir}/testlist.dtp
             fi
         done
     done
