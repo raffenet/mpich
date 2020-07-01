@@ -94,6 +94,44 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_SHM_am_isend_reply(MPIR_Context_id_t context_
     return ret;
 }
 
+MPL_STATIC_INLINE_PREFIX int MPIDI_SHM_am_isend_pipeline_rts(int rank, MPIR_Comm * comm,
+                                                             int handler_id, const void *am_hdr,
+                                                             size_t am_hdr_sz, const void *data,
+                                                             MPI_Count count, MPI_Datatype datatype,
+                                                             MPIR_Request * sreq)
+{
+    int ret;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_SHM_AM_ISEND_PIPELINE_RTS);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_SHM_AM_ISEND_PIPELINE_RTS);
+
+    ret = MPIDI_POSIX_am_isend_pipeline_rts(rank, comm, MPIDI_POSIX_AM_HDR_CH4, handler_id, am_hdr,
+                                            am_hdr_sz, data, count, datatype, sreq);
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_SHM_AM_ISEND_PIPELINE_RTS);
+    return ret;
+}
+
+MPL_STATIC_INLINE_PREFIX int MPIDI_SHM_am_isend_pipeline_seg(MPIR_Context_id_t context_id,
+                                                             int src_rank, int handler_id,
+                                                             const void *am_hdr, size_t am_hdr_sz,
+                                                             const void *data, MPI_Count count,
+                                                             MPI_Datatype datatype,
+                                                             MPIR_Request * sreq)
+{
+    int ret;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_SHM_AM_ISEND_PIPELINE_SEG);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_SHM_AM_ISEND_PIPELINE_SEG);
+
+    ret = MPIDI_POSIX_am_isend_pipeline_seg(context_id, src_rank, MPIDI_POSIX_AM_HDR_CH4,
+                                            handler_id, am_hdr, am_hdr_sz, data, count, datatype,
+                                            sreq);
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_SHM_AM_ISEND_PIPELINE_SEG);
+    return ret;
+}
+
 MPL_STATIC_INLINE_PREFIX size_t MPIDI_SHM_am_hdr_max_sz(void)
 {
     int ret;
