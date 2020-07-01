@@ -48,6 +48,15 @@ typedef int (*MPIDI_NM_am_isend_reply_t) (MPIR_Context_id_t context_id, int src_
                                           int handler_id, const void *am_hdr, size_t am_hdr_sz,
                                           const void *data, MPI_Count count, MPI_Datatype datatype,
                                           MPIR_Request * sreq);
+typedef int (*MPIDI_NM_am_isend_pipeline_rts_t) (int rank, MPIR_Comm * comm, int handler_id,
+                                                 const void *am_hdr, size_t am_hdr_sz,
+                                                 const void *data, MPI_Count count,
+                                                 MPI_Datatype datatype, MPIR_Request * sreq);
+typedef int (*MPIDI_NM_am_isend_pipeline_seg_t) (MPIR_Context_id_t context_id, int src_rank,
+                                                 int handler_id, const void *am_hdr,
+                                                 size_t am_hdr_sz, const void *data,
+                                                 MPI_Count count, MPI_Datatype datatype,
+                                                 MPIR_Request * sreq);
 typedef size_t(*MPIDI_NM_am_hdr_max_sz_t) (void);
 typedef size_t(*MPIDI_NM_am_eager_limit_t) (void);
 typedef size_t(*MPIDI_NM_am_eager_buf_limit_t) (void);
@@ -405,6 +414,8 @@ typedef struct MPIDI_NM_funcs {
     MPIDI_NM_am_isendv_t am_isendv;
     MPIDI_NM_am_send_hdr_reply_t am_send_hdr_reply;
     MPIDI_NM_am_isend_reply_t am_isend_reply;
+    MPIDI_NM_am_isend_pipeline_rts_t am_isend_pipeline_rts;
+    MPIDI_NM_am_isend_pipeline_seg_t am_isend_pipeline_seg;
     MPIDI_NM_am_hdr_max_sz_t am_hdr_max_sz;
     MPIDI_NM_am_eager_limit_t am_eager_limit;
     MPIDI_NM_am_eager_buf_limit_t am_eager_buf_limit;
@@ -556,6 +567,19 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isend_reply(MPIR_Context_id_t context_i
                                                      size_t am_hdr_sz, const void *data,
                                                      MPI_Count count, MPI_Datatype datatype,
                                                      MPIR_Request * sreq) MPL_STATIC_INLINE_SUFFIX;
+MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isend_pipeline_rts(int rank, MPIR_Comm * comm,
+                                                            int handler_id, const void *am_hdr,
+                                                            size_t am_hdr_sz, const void *data,
+                                                            MPI_Count count, MPI_Datatype datatype,
+                                                            MPIR_Request * sreq)
+    MPL_STATIC_INLINE_SUFFIX;
+MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_isend_pipeline_seq(MPIR_Context_id_t context_id,
+                                                            int src_rank, int handler_id,
+                                                            const void *am_hdr, size_t am_hdr_sz,
+                                                            const void *data, MPI_Count count,
+                                                            MPI_Datatype datatype,
+                                                            MPIR_Request * sreq)
+    MPL_STATIC_INLINE_SUFFIX;
 MPL_STATIC_INLINE_PREFIX size_t MPIDI_NM_am_hdr_max_sz(void) MPL_STATIC_INLINE_SUFFIX;
 MPL_STATIC_INLINE_PREFIX size_t MPIDI_NM_am_eager_limit(void) MPL_STATIC_INLINE_SUFFIX;
 MPL_STATIC_INLINE_PREFIX size_t MPIDI_NM_am_eager_buf_limit(void) MPL_STATIC_INLINE_SUFFIX;

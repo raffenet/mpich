@@ -411,4 +411,40 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_am_send_hdr_reply(MPIR_Context_id_t contex
     goto fn_exit;
 }
 
+static inline int MPIDI_NM_am_isend_pipeline_rts(int rank, MPIR_Comm * comm, int handler_id,
+                                                 const void *am_hdr, size_t am_hdr_sz,
+                                                 const void *data, MPI_Count count,
+                                                 MPI_Datatype datatype, MPIR_Request * sreq)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_NM_AM_ISEND_PIPELINE_RTS);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_AM_ISEND_PIPELINE_RTS);
+
+    MPIR_Assert(0);
+
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_AM_ISEND_PIPELINE_RTS);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+static inline int MPIDI_NM_am_isend_pipeline_seg(MPIR_Context_id_t context_id, int src_rank,
+                                                 int handler_id, const void *am_hdr,
+                                                 size_t am_hdr_sz, const void *data,
+                                                 MPI_Count count, MPI_Datatype datatype,
+                                                 MPIR_Request * sreq)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_NM_AM_ISEND_PIPELINE_SEG);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_NM_AM_ISEND_PIPELINE_SEG);
+
+    MPIR_Assert(0);
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_NM_AM_ISEND_PIPELINE_SEG);
+    return mpi_errno;
+}
+
 #endif /* UCX_AM_H_INCLUDED */
