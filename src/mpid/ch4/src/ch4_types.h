@@ -84,6 +84,21 @@ typedef struct MPIDIG_send_long_lmt_msg_t {
     MPIR_Request *rreq_ptr;
 } MPIDIG_send_long_lmt_msg_t;
 
+typedef struct MPIDIG_send_pipeline_rts_msg_t {
+    MPIDIG_hdr_t hdr;
+    MPI_Aint data_sz;           /* Message size in bytes */
+    MPIR_Request *sreq_ptr;     /* Pointer value of the request object at the sender side */
+} MPIDIG_send_pipeline_rts_msg_t;
+
+typedef struct MPIDIG_send_pipeline_cts_msg_t {
+    MPIR_Request *sreq_ptr;
+    MPIR_Request *rreq_ptr;
+} MPIDIG_send_pipeline_cts_msg_t;
+
+typedef struct MPIDIG_send_pipeline_seg_msg_t {
+    MPIR_Request *rreq_ptr;
+} MPIDIG_send_pipeline_seg_msg_t;
+
 typedef struct MPIDIG_ssend_req_msg_t {
     MPIDIG_hdr_t hdr;
     MPIR_Request *sreq_ptr;

@@ -13,7 +13,27 @@ enum {
 
     MPIDIG_SEND_LONG_REQ,       /* Rendezvous send RTS (request to send) */
     MPIDIG_SEND_LONG_ACK,       /* Rendezvous send CTS (clear to send) */
+    /* FIXME: This old long message protocol will be replaced by the new one
+     * I left it here will remove in a separate commit to lessen the conflict */
     MPIDIG_SEND_LONG_LMT,       /* Rendezvous send LMT */
+
+    /* new pipeline protocol, RTS, CTS and segment transmission. The protocol start by sender
+     * sending RTS to receiver. The RTS contain the headers and the first segment of data.
+     * The receiver will to match a posted recv request. If no posted recv, it will create a
+     * recv request for the unexpected data and the first chunk will be received into the
+     * unexpected buffer (that is allocated from a GenQ private queue). The receiver will only
+     * send back the CTS when the incoming/unexpected message is matched. The sender will wait
+     * for the CTS before sending the 2nd and rest segments.
+     * Note if the receiver received the RTS for the pipeline protocol, it should not refuse
+     * and prefer a different protocol. This is because the pipeline is the ultimate fallback
+     * protocol for long messages. If the sender is sending the pipeline RTS, it means either
+     * pipeline is the only protocol available for this data. This could be due to the SHM/NM
+     * only supports pipeline or a different protocol was previously rejected by the receiver.
+     * For example, the sender could attemp to send using RDMA read and the receiver cannot/do
+     * not want to receive using RDMA read. Thus the sender fallbacks to pipeline. */
+    MPIDIG_SEND_PIPELINE_RTS,
+    MPIDIG_SEND_PIPELINE_CTS,
+    MPIDIG_SEND_PIPELINE_SEG,
 
     MPIDIG_SSEND_REQ,
     MPIDIG_SSEND_ACK,
@@ -59,6 +79,11 @@ enum {
     MPIDI_OFI_INTERNAL_HANDLER_CONTROL,
 
     MPIDIG_HANDLER_STATIC_MAX
+};
+
+enum {
+    MPIDIG_AM_PROTOCOL__EAGER,
+    MPIDIG_AM_PROTOCOL__PIPELINE,
 };
 
 typedef int (*MPIDIG_am_target_cmpl_cb) (MPIR_Request * req);

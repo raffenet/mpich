@@ -576,6 +576,87 @@ int MPIDIG_send_long_lmt_target_msg_cb(int handler_id, void *am_hdr, void *data,
     return mpi_errno;
 }
 
+/* PIPELINE protocol callbacks */
+int MPIDIG_send_pipeline_rts_target_msg_cb(int handler_id, void *am_hdr, void *data,
+                                           MPI_Aint in_data_sz, int is_local, int is_async,
+                                           MPIR_Request ** req)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_SEND_PIPELINE_RTS_TARGET_MSG_CB);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_SEND_PIPELINE_RTS_TARGET_MSG_CB);
+
+    MPIR_Assert(0);
+
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIG_SEND_PIPELINE_RTS_TARGET_MSG_CB);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+int MPIDIG_send_pipeline_rts_origin_cb(MPIR_Request * sreq)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_SEND_PIPELINE_RTS_ORIGIN_CB);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_SEND_PIPELINE_RTS_ORIGIN_CB);
+
+    MPIR_Assert(0);
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIG_SEND_PIPELINE_RTS_ORIGIN_CB);
+    return mpi_errno;
+}
+
+int MPIDIG_send_pipeline_cts_target_msg_cb(int handler_id, void *am_hdr, void *data,
+                                           MPI_Aint in_data_sz, int is_local, int is_async,
+                                           MPIR_Request ** req)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_SEND_PIPELINE_CTS_TARGET_MSG_CB);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_SEND_PIPELINE_CTS_TARGET_MSG_CB);
+
+    MPIR_Assert(0);
+
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIG_SEND_PIPELINE_CTS_TARGET_MSG_CB);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
+int MPIDIG_send_pipeline_seg_origin_cb(MPIR_Request * sreq)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_SEND_PIPELINE_SEG_ORIGIN_CB);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_SEND_PIPELINE_SEG_ORIGIN_CB);
+
+    MPIR_Assert(0);
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIG_SEND_PIPELINE_SEG_ORIGIN_CB);
+    return mpi_errno;
+}
+
+int MPIDIG_send_pipeline_seg_target_msg_cb(int handler_id, void *am_hdr, void *data,
+                                           MPI_Aint in_data_sz, int is_local, int is_async,
+                                           MPIR_Request ** req)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_SEND_PIPELINE_SEG_TARGET_MSG_CB);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_SEND_PIPELINE_SEG_TARGET_MSG_CB);
+
+    MPIR_Assert(0);
+
+  fn_exit:
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIG_SEND_PIPELINE_SEG_TARGET_MSG_CB);
+    return mpi_errno;
+  fn_fail:
+    goto fn_exit;
+}
+
 int MPIDIG_ssend_target_msg_cb(int handler_id, void *am_hdr, void *data, MPI_Aint in_data_sz,
                                int is_local, int is_async, MPIR_Request ** req)
 {
