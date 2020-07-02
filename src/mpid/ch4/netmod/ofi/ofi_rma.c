@@ -335,9 +335,10 @@ int MPIDI_OFI_pack_put(const void *origin_addr, int origin_count,
                   +(target_disp * MPIDI_OFI_winfo_disp_unit(win, target_rank)));
 
     /* allocate pack buffer */
-    /* FIXME: use genq API to get pack buffer(s) */
-    MPI_Aint pack_bytes = MPL_MIN(origin_bytes, 64 * 1024);
-    void *pack_buffer = MPL_malloc(pack_bytes, MPL_MEM_BUFFER);
+    MPI_Aint pack_bytes = MPL_MIN(origin_bytes, MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE);
+    void *pack_buffer;
+    MPIDU_genq_private_pool_alloc_cell(MPIDI_OFI_global.am_pack_buf_pool, &pack_buffer);
+    MPIR_Assert(pack_buffer);
 
     /* put on deferred list */
     DL_APPEND(MPIDI_OFI_WIN(win).deferredQ, req);
@@ -404,9 +405,10 @@ int MPIDI_OFI_pack_get(void *origin_addr, int origin_count,
                   +(target_disp * MPIDI_OFI_winfo_disp_unit(win, target_rank)));
 
     /* allocate pack buffer */
-    /* FIXME: use genq API to get pack buffer(s) */
-    MPI_Aint pack_bytes = MPL_MIN(origin_bytes, 64 * 1024);
-    void *pack_buffer = MPL_malloc(pack_bytes, MPL_MEM_BUFFER);
+    MPI_Aint pack_bytes = MPL_MIN(origin_bytes, MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE);
+    void *pack_buffer;
+    MPIDU_genq_private_pool_alloc_cell(MPIDI_OFI_global.am_pack_buf_pool, &pack_buffer);
+    MPIR_Assert(pack_buffer);
 
     /* put on deferred list */
     DL_APPEND(MPIDI_OFI_WIN(win).deferredQ, req);
