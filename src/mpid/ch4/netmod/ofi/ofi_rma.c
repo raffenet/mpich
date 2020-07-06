@@ -144,6 +144,13 @@ static int issue_packed_put(MPIR_Win * win, MPIDI_OFI_win_request_t * req)
     struct fi_rma_iov riov;
     uint64_t flags;
 
+    if (req->noncontig.put.origin.pack_buffer == NULL) {
+        MPIDU_genq_private_pool_alloc_cell(MPIDI_OFI_global.am_pack_buf_pool,
+                                           &req->noncontig.put.origin.pack_buffer);
+        if (req->noncontig.put.origin.pack_buffer == NULL)
+            goto fn_exit;
+    }
+
     /* load the pack buffer */
     MPIR_Typerep_pack(req->noncontig.put.origin.addr, req->noncontig.put.origin.count,
                       req->noncontig.put.origin.datatype,
@@ -223,6 +230,13 @@ static int issue_packed_get(MPIR_Win * win, MPIDI_OFI_win_request_t * req)
     struct iovec iov;
     struct fi_rma_iov riov;
     uint64_t flags;
+
+    if (req->noncontig.get.origin.pack_buffer == NULL) {
+        MPIDU_genq_private_pool_alloc_cell(MPIDI_OFI_global.am_pack_buf_pool,
+                                           &req->noncontig.get.origin.pack_buffer);
+        if (req->noncontig.get.origin.pack_buffer == NULL)
+            goto fn_exit;
+    }
 
     /* unpack from pack buffer */
     if (req->noncontig.put.origin.pack_offset > 0) {
@@ -338,7 +352,6 @@ int MPIDI_OFI_pack_put(const void *origin_addr, int origin_count,
     MPI_Aint pack_bytes = MPL_MIN(origin_bytes, MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE);
     void *pack_buffer;
     MPIDU_genq_private_pool_alloc_cell(MPIDI_OFI_global.am_pack_buf_pool, &pack_buffer);
-    MPIR_Assert(pack_buffer);
 
     /* put on deferred list */
     DL_APPEND(MPIDI_OFI_WIN(win).deferredQ, req);
@@ -408,7 +421,6 @@ int MPIDI_OFI_pack_get(void *origin_addr, int origin_count,
     MPI_Aint pack_bytes = MPL_MIN(origin_bytes, MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE);
     void *pack_buffer;
     MPIDU_genq_private_pool_alloc_cell(MPIDI_OFI_global.am_pack_buf_pool, &pack_buffer);
-    MPIR_Assert(pack_buffer);
 
     /* put on deferred list */
     DL_APPEND(MPIDI_OFI_WIN(win).deferredQ, req);
