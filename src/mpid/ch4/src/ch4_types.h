@@ -96,6 +96,7 @@ typedef struct MPIDIG_send_pipeline_cts_msg_t {
 } MPIDIG_send_pipeline_cts_msg_t;
 
 typedef struct MPIDIG_send_pipeline_seg_msg_t {
+    MPI_Aint offset;
     MPIR_Request *rreq_ptr;
 } MPIDIG_send_pipeline_seg_msg_t;
 
