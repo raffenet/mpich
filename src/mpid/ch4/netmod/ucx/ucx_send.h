@@ -81,20 +81,28 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_send(const void *buf,
         ucp_request =
             (MPIDI_UCX_ucp_request_t *) ucp_tag_send_nbx(ep, send_buf, send_cnt, ucx_tag, &param);
     }
+
+    /* check for immediate completion */
+    if (ucp_request == UCS_OK) {
+        if (req != NULL)
+            MPIR_cc_set(&req->cc, 0);
+        else if (have_request)
+            *request = MPIR_Request_create_complete(MPIR_REQUEST_KIND__SEND);
+
+        goto fn_exit;
+    }
+
+    /* check for errors */
     MPIDI_UCX_CHK_REQUEST(ucp_request);
 
-    if (ucp_request) {
-        if (req == NULL)
-            req = MPIR_Request_create_from_pool(MPIR_REQUEST_KIND__SEND, vni_src);
+    /* send is in progress, link with MPICH request */
+    if (req == NULL) {
+        req = MPIR_Request_create_from_pool(MPIR_REQUEST_KIND__SEND, vni_src);
         MPIR_Request_add_ref(req);
-        ucp_request->req = req;
-        MPIDI_UCX_REQ(req).ucp_request = ucp_request;
-    } else if (req != NULL) {
-        MPIR_cc_set(&req->cc, 0);
-    } else if (have_request) {
-        req = MPIR_Request_create_complete(MPIR_REQUEST_KIND__SEND);
+        *request = req;
     }
-    *request = req;
+    ucp_request->req = req;
+    MPIDI_UCX_REQ(req).ucp_request = ucp_request;
 
   fn_exit:
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_UCX_SEND);
