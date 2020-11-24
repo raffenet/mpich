@@ -125,24 +125,26 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_recv(void *buf,
     MPIDI_Datatype_get_info(count, datatype, dt_contig, data_sz, dt_ptr, dt_true_lb);
 
     ucp_request_param_t param = {
-        .op_attr_mask = UCP_OP_ATTR_FIELD_DATATYPE |
-            UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FLAG_NO_IMM_CMPL,
+        .op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FLAG_NO_IMM_CMPL,
         .cb.recv = &MPIDI_UCX_recv_cmpl_cb,
     };
 
+    void *recv_buf;
+    MPI_Aint recv_cnt;
     if (dt_contig) {
-        param.datatype = ucp_dt_make_contig(1);
-        ucp_request =
-            (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[vni_dst].worker,
-                                                         (char *) buf + dt_true_lb, data_sz,
-                                                         ucp_tag, tag_mask, &param);
+        recv_buf = (char *) buf + dt_true_lb;
+        recv_cnt = data_sz;
     } else {
+        param.op_attr_mask |= UCP_OP_ATTR_FIELD_DATATYPE;
         param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
         MPIR_Datatype_ptr_add_ref(dt_ptr);
-        ucp_request =
-            (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[vni_dst].worker,
-                                                         buf, count, ucp_tag, tag_mask, &param);
+        recv_buf = buf;
+        recv_cnt = count;
     }
+
+    ucp_request =
+        (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[vni_dst].worker,
+                                                     recv_buf, recv_cnt, ucp_tag, tag_mask, &param);
     MPIDI_UCX_CHK_REQUEST(ucp_request);
 
     if (ucp_request->req) {
