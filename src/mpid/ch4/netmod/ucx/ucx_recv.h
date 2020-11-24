@@ -20,18 +20,10 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_recv_cmpl_cb(void *request, ucs_status_t
                                                      void *user_data)
 {
     MPIDI_UCX_ucp_request_t *ucp_request = (MPIDI_UCX_ucp_request_t *) request;
-    MPIR_Request *rreq = NULL;
+    MPIR_Request *rreq = user_data;
 
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDI_UCX_RECV_CMPL_CB);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDI_UCX_RECV_CMPL_CB);
-
-    if (ucp_request->req) {
-        rreq = ucp_request->req;
-    } else {
-        rreq = MPL_malloc(sizeof(MPIR_Request), MPL_MEM_OTHER);
-        rreq->status.MPI_ERROR = MPI_SUCCESS;
-        MPIR_STATUS_SET_CANCEL_BIT(rreq->status, FALSE);
-    }
 
     if (unlikely(status == UCS_ERR_CANCELED)) {
         MPIR_STATUS_SET_CANCEL_BIT(rreq->status, TRUE);
@@ -47,15 +39,9 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_recv_cmpl_cb(void *request, ucs_status_t
         MPIR_STATUS_SET_COUNT(rreq->status, count);
     }
 
-    if (ucp_request->req) {
-        MPIDIU_request_complete(rreq);
-        ucp_request->req = NULL;
-        ucp_request_release(ucp_request);
-    } else {
-        MPIR_cc_set(&rreq->cc, 0);
-        ucp_request->req = rreq;
-    }
-
+    MPIDIU_request_complete(rreq);
+    ucp_request->req = NULL;
+    ucp_request_release(ucp_request);
 
     MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDI_UCX_RECV_CMPL_CB);
 }
@@ -142,32 +128,18 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_recv(void *buf,
         recv_cnt = count;
     }
 
+    if (req == NULL)
+        req = MPIR_Request_create_from_pool(MPIR_REQUEST_KIND__RECV, vni_dst);
+    MPIR_ERR_CHKANDSTMT((req) == NULL, mpi_errno, MPIX_ERR_NOREQ, goto fn_fail, "**nomemreq");
+    MPIR_Request_add_ref(req);
+    param.user_data = req;
+
     ucp_request =
         (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[vni_dst].worker,
                                                      recv_buf, recv_cnt, ucp_tag, tag_mask, &param);
     MPIDI_UCX_CHK_REQUEST(ucp_request);
+    MPIDI_UCX_REQ(req).ucp_request = ucp_request;
 
-    if (ucp_request->req) {
-        if (req == NULL) {
-            req = MPIR_Request_create_from_pool(MPIR_REQUEST_KIND__RECV, vni_dst);
-            memcpy(&req->status, &((MPIR_Request *) ucp_request->req)->status, sizeof(MPI_Status));
-            MPIR_cc_set(&req->cc, 0);
-            MPL_free(ucp_request->req);
-        } else {
-            memcpy(&req->status, &((MPIR_Request *) ucp_request->req)->status, sizeof(MPI_Status));
-            MPIR_cc_set(&req->cc, 0);
-            MPIR_Request_free_unsafe((MPIR_Request *) ucp_request->req);
-        }
-        ucp_request->req = NULL;
-        ucp_request_release(ucp_request);
-    } else {
-        if (req == NULL)
-            req = MPIR_Request_create_from_pool(MPIR_REQUEST_KIND__RECV, vni_dst);
-        MPIR_ERR_CHKANDSTMT((req) == NULL, mpi_errno, MPIX_ERR_NOREQ, goto fn_fail, "**nomemreq");
-        MPIR_Request_add_ref(req);
-        MPIDI_UCX_REQ(req).ucp_request = ucp_request;
-        ucp_request->req = req;
-    }
     *request = req;
 
   fn_exit:
