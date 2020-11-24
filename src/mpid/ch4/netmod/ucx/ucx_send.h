@@ -56,34 +56,30 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_send(const void *buf,
     MPIDI_Datatype_get_info(count, datatype, dt_contig, data_sz, dt_ptr, dt_true_lb);
 
     ucp_request_param_t param = {
-        .op_attr_mask = UCP_OP_ATTR_FIELD_DATATYPE | UCP_OP_ATTR_FIELD_CALLBACK,
+        .op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK,
         .cb.send = &MPIDI_UCX_send_cmpl_cb
     };
 
-    if (is_sync) {
-        if (dt_contig) {
-            param.datatype = ucp_dt_make_contig(1);
-            ucp_request =
-                (MPIDI_UCX_ucp_request_t *) ucp_tag_send_sync_nbx(ep, (char *) buf + dt_true_lb,
-                                                                  data_sz, ucx_tag, &param);
-        } else {
-            param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
-            MPIR_Datatype_ptr_add_ref(dt_ptr);
-            ucp_request =
-                (MPIDI_UCX_ucp_request_t *) ucp_tag_send_sync_nbx(ep, buf, count, ucx_tag, &param);
-        }
+    const void *send_buf;
+    MPI_Aint send_cnt;
+    if (dt_contig) {
+        send_buf = (char *) buf + dt_true_lb;
+        send_cnt = data_sz;
     } else {
-        if (dt_contig) {
-            param.datatype = ucp_dt_make_contig(1);
-            ucp_request =
-                (MPIDI_UCX_ucp_request_t *) ucp_tag_send_nbx(ep, (char *) buf + dt_true_lb, data_sz,
-                                                             ucx_tag, &param);
-        } else {
-            param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
-            MPIR_Datatype_ptr_add_ref(dt_ptr);
-            ucp_request =
-                (MPIDI_UCX_ucp_request_t *) ucp_tag_send_nbx(ep, buf, count, ucx_tag, &param);
-        }
+        param.op_attr_mask |= UCP_OP_ATTR_FIELD_DATATYPE;
+        param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
+        MPIR_Datatype_ptr_add_ref(dt_ptr);
+        send_buf = buf;
+        send_cnt = count;
+    }
+
+    if (is_sync) {
+        ucp_request =
+            (MPIDI_UCX_ucp_request_t *) ucp_tag_send_sync_nbx(ep, send_buf, send_cnt,
+                                                              ucx_tag, &param);
+    } else {
+        ucp_request =
+            (MPIDI_UCX_ucp_request_t *) ucp_tag_send_nbx(ep, send_buf, send_cnt, ucx_tag, &param);
     }
     MPIDI_UCX_CHK_REQUEST(ucp_request);
 
