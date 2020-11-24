@@ -16,7 +16,8 @@
  * FIXME: update with new ucx api
  */
 MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_recv_cmpl_cb(void *request, ucs_status_t status,
-                                                     ucp_tag_recv_info_t * info)
+                                                     const ucp_tag_recv_info_t * info,
+                                                     void *user_data)
 {
     MPIDI_UCX_ucp_request_t *ucp_request = (MPIDI_UCX_ucp_request_t *) request;
     MPIR_Request *rreq = NULL;
@@ -123,19 +124,24 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_recv(void *buf,
     ucp_tag = MPIDI_UCX_recv_tag(tag, rank, comm->recvcontext_id + context_offset);
     MPIDI_Datatype_get_info(count, datatype, dt_contig, data_sz, dt_ptr, dt_true_lb);
 
+    ucp_request_param_t param = {
+        .op_attr_mask = UCP_OP_ATTR_FIELD_DATATYPE |
+            UCP_OP_ATTR_FIELD_CALLBACK | UCP_OP_ATTR_FLAG_NO_IMM_CMPL,
+        .cb.recv = &MPIDI_UCX_recv_cmpl_cb,
+    };
+
     if (dt_contig) {
+        param.datatype = ucp_dt_make_contig(1);
         ucp_request =
-            (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nb(MPIDI_UCX_global.ctx[vni_dst].worker,
-                                                        (char *) buf + dt_true_lb, data_sz,
-                                                        ucp_dt_make_contig(1),
-                                                        ucp_tag, tag_mask, &MPIDI_UCX_recv_cmpl_cb);
+            (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[vni_dst].worker,
+                                                         (char *) buf + dt_true_lb, data_sz,
+                                                         ucp_tag, tag_mask, &param);
     } else {
+        param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
         MPIR_Datatype_ptr_add_ref(dt_ptr);
         ucp_request =
-            (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nb(MPIDI_UCX_global.ctx[vni_dst].worker,
-                                                        buf, count,
-                                                        dt_ptr->dev.netmod.ucx.ucp_datatype,
-                                                        ucp_tag, tag_mask, &MPIDI_UCX_recv_cmpl_cb);
+            (MPIDI_UCX_ucp_request_t *) ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[vni_dst].worker,
+                                                         buf, count, ucp_tag, tag_mask, &param);
     }
     MPIDI_UCX_CHK_REQUEST(ucp_request);
 
