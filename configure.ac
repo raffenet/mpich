@@ -5503,3 +5503,25 @@ AC_OUTPUT(Makefile \
           test/commands/cmdtests)
 
 echo 'Configuration completed.'
+if test $device_name = "ch4" ; then
+cat <<EOF
+***
+*** device: ch4
+*** netmods: ${ch4_netmods}
+*** shm: ${ch4_shm}
+***
+EOF
+elif test $DEVICE = "ch3:nemesis" ; then
+cat <<EOF
+***
+*** device configuration: ch3:nemesis
+*** nemesis networks: $nemesis_networks
+***
+EOF
+else
+cat <<EOF
+***
+*** device configuration: ${DEVICE}
+***
+EOF
+fi
