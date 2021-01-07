@@ -74,6 +74,18 @@ int MPIR_Request_completion_processing(MPIR_Request * request_ptr, MPI_Status * 
             }
         case MPIR_REQUEST_KIND__RECV:
         case MPIR_REQUEST_KIND__COLL:
+            {
+                MPII_Coll_req_t *coll = &request_ptr->u.nbc.coll;
+                if (coll->host_recvbuf)
+                    MPIR_Localcopy(coll->host_recvbuf, coll->count, coll->datatype,
+                                   coll->user_recvbuf, coll->count, coll->datatype);
+                MPIR_Coll_host_buffer_free(coll->host_sendbuf, coll->host_recvbuf);
+                MPIR_Datatype_release_if_not_builtin(coll->datatype);
+
+                MPIR_Request_extract_status(request_ptr, status);
+                mpi_errno = request_ptr->status.MPI_ERROR;
+                break;
+            }
         case MPIR_REQUEST_KIND__RMA:
             {
                 MPIR_Request_extract_status(request_ptr, status);

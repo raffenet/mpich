@@ -51,6 +51,11 @@ enum {
 /* Collectives request data structure */
 typedef struct MPII_Coll_req_t {
     void *sched;                /* pointer to the schedule */
+    void *host_sendbuf;
+    void *host_recvbuf;
+    void *user_recvbuf;
+    MPI_Aint count;
+    MPI_Datatype datatype;
 
     struct MPII_Coll_req_t *next;       /* linked-list next pointer */
     struct MPII_Coll_req_t *prev;       /* linked-list prev pointer */
