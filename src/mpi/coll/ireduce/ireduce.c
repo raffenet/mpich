@@ -397,6 +397,26 @@ int MPIR_Ireduce(const void *sendbuf, void *recvbuf, int count,
                                       request);
     }
 
+    if (!*request)
+        goto immed_complete;
+
+    MPIR_REQUEST_CS_ENTER(*request);
+    if (MPIR_Request_is_complete(*request)) {
+        MPIR_REQUEST_CS_EXIT(*request);
+        goto immed_complete;
+    }
+
+    (*request)->u.nbc.coll.host_sendbuf = host_sendbuf;
+    (*request)->u.nbc.coll.host_recvbuf = host_recvbuf;
+    (*request)->u.nbc.coll.user_recvbuf = in_recvbuf;
+    (*request)->u.nbc.coll.count = count;
+    (*request)->u.nbc.coll.datatype = datatype;
+    MPIR_Datatype_add_ref_if_not_builtin(datatype);
+    MPIR_REQUEST_CS_EXIT(*request);
+
+    return mpi_errno;
+
+  immed_complete:
     /* Copy out data from host recv buffer to GPU buffer */
     if (host_recvbuf) {
         recvbuf = in_recvbuf;
