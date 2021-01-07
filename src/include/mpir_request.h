@@ -541,6 +541,18 @@ MPL_STATIC_INLINE_PREFIX int MPIR_Request_completion_processing_fastpath(MPI_Req
 int MPIR_Request_completion_processing(MPIR_Request *, MPI_Status *);
 int MPIR_Request_get_error(MPIR_Request *);
 
+#define MPIR_REQUEST_CS_ENTER(req_)                                                         \
+    do {                                                                                    \
+        int pool_ = MPIR_REQUEST_POOL((req_));                                              \
+        MPID_THREAD_CS_ENTER(VCI, (*(MPID_Thread_mutex_t *) MPIR_Request_mem[pool_].lock)); \
+    } while (0)
+
+#define MPIR_REQUEST_CS_EXIT(req_)                                                         \
+    do {                                                                                   \
+        int pool_ = MPIR_REQUEST_POOL((req_))                                              \
+        MPID_THREAD_CS_EXIT(VCI, (*(MPID_Thread_mutex_t *) MPIR_Request_mem[pool_].lock)); \
+    } while (0)
+
 MPL_STATIC_INLINE_PREFIX int MPID_Request_is_anysource(MPIR_Request *);
 MPL_STATIC_INLINE_PREFIX int MPID_Comm_AS_enabled(MPIR_Comm *);
 extern int MPIR_CVAR_ENABLE_FT;
