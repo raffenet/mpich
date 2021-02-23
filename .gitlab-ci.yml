@@ -23,7 +23,7 @@ build:batch:
     - rm -rf $HOME/software/ci-build
     - ./autogen.sh
     - module load cuda
-    - ./configure --with-device=ch4:ucx --with-ucx=embedded --prefix=$HOME/software/ci-build --with-cuda=$CUDAPATH --with-pm=none --with-pmix=$MPI_ROOT --with-hwloc=embedded
+    - ./configure --with-device=ch4:ucx --with-ucx=embedded --enable-mt --prefix=$HOME/software/ci-build --with-cuda=$CUDAPATH --with-pm=none --with-pmix=$MPI_ROOT --with-hwloc=embedded
     - make -j install
     - $HOME/software/ci-build/bin/mpicc -o $HOME/software/ci-build/bin/cpi examples/cpi.c
     - cd $HOME
