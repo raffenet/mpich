@@ -62,17 +62,17 @@ MPL_STATIC_INLINE_PREFIX void MPIDIG_part_match_rreq(MPIR_Request * part_req)
     part_req->status.MPI_ERROR = MPI_SUCCESS;
 
     /* Additional check for partitioned pt2pt: require identical buffer size */
-    if (part_req->status.MPI_ERROR == MPI_SUCCESS) {
-        MPI_Aint rdata_size;
-        MPIR_Datatype_get_size_macro(MPIDI_PART_REQUEST(part_req, datatype), rdata_size);
-        rdata_size *= MPIDI_PART_REQUEST(part_req, count) * part_req->u.part.partitions;
-        if (sdata_size != rdata_size) {
-            part_req->status.MPI_ERROR =
-                MPIR_Err_create_code(part_req->status.MPI_ERROR, MPIR_ERR_RECOVERABLE, __FUNCTION__,
-                                     __LINE__, MPI_ERR_OTHER, "**ch4|partmismatchsize",
-                                     "**ch4|partmismatchsize %d %d",
-                                     (int) rdata_size, (int) sdata_size);
-        }
+
+    MPI_Aint rdata_size;
+    MPIR_Datatype_get_size_macro(MPIDI_PART_REQUEST(part_req, datatype), rdata_size);
+    rdata_size *= MPIDI_PART_REQUEST(part_req, count) * part_req->u.part.partitions;
+    if (sdata_size != rdata_size) {
+        part_req->status.MPI_ERROR =
+            MPIR_Err_create_code(part_req->status.MPI_ERROR, MPIR_ERR_RECOVERABLE, __FUNCTION__,
+                                 __LINE__, MPI_ERR_OTHER, "**ch4|partmismatchsize",
+                                 "**ch4|partmismatchsize %d %d %d %d",
+                                 part_req->status.MPI_SOURCE, part_req->status.MPI_TAG,
+                                 (int) rdata_size, (int) sdata_size);
     }
 }
 
