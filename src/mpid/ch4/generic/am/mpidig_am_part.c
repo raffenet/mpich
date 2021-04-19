@@ -84,7 +84,7 @@ int MPIDIG_mpi_psend_init(void *buf, int partitions, MPI_Aint count,
     am_hdr.context_id = comm->context_id;
     am_hdr.sreq_ptr = *request;
 
-    MPI_Aint dtype_size = 0;
+    MPI_Aint dtype_size;
     MPIR_Datatype_get_size_macro(datatype, dtype_size);
     am_hdr.data_sz = dtype_size * count * partitions;   /* count is per partition */
 
@@ -125,8 +125,8 @@ int MPIDIG_mpi_precv_init(void *buf, int partitions, int count,
     part_req_am_init(*request);
 
     /* Try matching a request or post a new one */
-    MPIR_Request *unexp_req = NULL;
-    unexp_req = MPIDIG_part_dequeue(source, tag, comm->context_id, &MPIDI_global.part_unexp_list);
+    MPIR_Request *unexp_req =
+        MPIDIG_part_dequeue(source, tag, comm->context_id, &MPIDI_global.part_unexp_list);
     if (unexp_req) {
         /* Copy sender info from unexp_req to local part_rreq */
         MPIDIG_PART_REQUEST(*request, u.recv).sdata_size =
