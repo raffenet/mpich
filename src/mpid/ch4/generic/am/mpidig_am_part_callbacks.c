@@ -70,7 +70,7 @@ int MPIDIG_part_send_init_target_msg_cb(int handler_id, void *am_hdr, void *data
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_PART_SEND_INIT_TARGET_MSG_CB);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_PART_SEND_INIT_TARGET_MSG_CB);
 
-    MPIDIG_part_send_init_msg_t *msg_hdr = (MPIDIG_part_send_init_msg_t *) am_hdr;
+    MPIDIG_part_send_init_msg_t *msg_hdr = am_hdr;
     MPIR_Request *posted_req = NULL;
     posted_req = MPIDIG_rreq_dequeue(msg_hdr->src_rank, msg_hdr->tag, msg_hdr->context_id,
                                      &MPIDI_global.part_posted_list, MPIDIG_PART);
@@ -120,7 +120,7 @@ int MPIDIG_part_cts_target_msg_cb(int handler_id, void *am_hdr, void *data,
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_PART_CTS_TARGET_MSG_CB);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_PART_CTS_TARGET_MSG_CB);
 
-    MPIDIG_part_cts_msg_t *msg_hdr = (MPIDIG_part_cts_msg_t *) am_hdr;
+    MPIDIG_part_cts_msg_t *msg_hdr = am_hdr;
     MPIR_Request *part_sreq = msg_hdr->sreq_ptr;
     MPIR_Assert(part_sreq);
 
@@ -142,7 +142,7 @@ int MPIDIG_part_send_data_target_msg_cb(int handler_id, void *am_hdr, void *data
     MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_PART_SEND_DATA_TARGET_MSG_CB);
     MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_PART_SEND_DATA_TARGET_MSG_CB);
 
-    MPIDIG_part_send_data_msg_t *msg_hdr = (MPIDIG_part_send_data_msg_t *) am_hdr;
+    MPIDIG_part_send_data_msg_t *msg_hdr = am_hdr;
     MPIR_Request *part_rreq = msg_hdr->rreq_ptr;
     MPIR_Assert(part_rreq);
 
