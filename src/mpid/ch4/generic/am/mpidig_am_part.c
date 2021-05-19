@@ -137,7 +137,7 @@ int MPIDIG_mpi_precv_init(void *buf, int partitions, int count,
         MPIDIG_PART_REQUEST(*request, peer_req_ptr) = MPIDIG_PART_REQUEST(unexp_req, peer_req_ptr);
         MPIDI_CH4_REQUEST_FREE(unexp_req);
 
-        MPIDIG_part_match_rreq(*request);
+        MPIDI_part_rreq_matched(*request);
         MPIDIG_PART_REQ_INC_FETCH_STATUS(*request);
     } else {
         MPIDIG_enqueue_request(*request, &MPIDI_global.part_posted_list, MPIDIG_PART);

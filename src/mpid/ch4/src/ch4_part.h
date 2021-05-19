@@ -8,6 +8,8 @@
 
 #include "ch4_impl.h"
 
+void MPIDI_part_rreq_matched(MPIR_Request * request);
+
 MPL_STATIC_INLINE_PREFIX int MPIDI_part_start(MPIR_Request * request)
 {
     int mpi_errno = MPI_SUCCESS;

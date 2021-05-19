@@ -64,3 +64,29 @@ int MPID_Precv_init(void *buf, int partitions, MPI_Aint count,
   fn_fail:
     goto fn_exit;
 }
+
+void MPIDI_part_rreq_matched(MPIR_Request * request)
+{
+    MPI_Aint sdata_size = MPIDIG_PART_REQUEST(request, u.recv).sdata_size;
+
+    /* Set status for partitioned req */
+    MPIR_STATUS_SET_COUNT(request->status, sdata_size);
+    request->status.MPI_SOURCE = MPIDI_PART_REQUEST(request, rank);
+    request->status.MPI_TAG = MPIDI_PART_REQUEST(request, tag);
+    request->status.MPI_ERROR = MPI_SUCCESS;
+
+    /* Additional check for partitioned pt2pt: require identical buffer size */
+    if (request->status.MPI_ERROR == MPI_SUCCESS) {
+        MPI_Aint rdata_size;
+        MPIR_Datatype_get_size_macro(MPIDI_PART_REQUEST(request, datatype), rdata_size);
+        rdata_size *= MPIDI_PART_REQUEST(request, count) * request->u.part.partitions;
+        if (sdata_size != rdata_size) {
+            request->status.MPI_ERROR =
+                MPIR_Err_create_code(request->status.MPI_ERROR, MPIR_ERR_RECOVERABLE, __FUNCTION__,
+                                     __LINE__, MPI_ERR_OTHER, "**ch4|partmismatchsize",
+                                     "**ch4|partmismatchsize %d %d %d %d",
+                                     request->status.MPI_SOURCE, request->status.MPI_TAG,
+                                     (int) rdata_size, (int) sdata_size);
+        }
+    }
+}
