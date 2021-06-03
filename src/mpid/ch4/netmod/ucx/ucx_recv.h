@@ -191,7 +191,8 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_imrecv(void *buf,
                                                             (char *) buf + dt_true_lb,
                                                             data_sz,
                                                             ucp_dt_make_contig(1),
-                                                            MPIDI_UCX_REQ(message).message_handler,
+                                                            MPIDI_UCX_REQ(message).
+                                                            u.message_handler,
                                                             &MPIDI_UCX_mrecv_cmpl_cb);
     } else {
         MPIR_Datatype_ptr_add_ref(dt_ptr);
@@ -199,7 +200,8 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_imrecv(void *buf,
             (MPIDI_UCX_ucp_request_t *) ucp_tag_msg_recv_nb(MPIDI_UCX_global.ctx[vci].worker,
                                                             buf, count,
                                                             dt_ptr->dev.netmod.ucx.ucp_datatype,
-                                                            MPIDI_UCX_REQ(message).message_handler,
+                                                            MPIDI_UCX_REQ(message).
+                                                            u.message_handler,
                                                             &MPIDI_UCX_mrecv_cmpl_cb);
     }
     MPIDI_UCX_CHK_REQUEST(ucp_request);
