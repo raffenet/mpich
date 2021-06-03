@@ -19,6 +19,7 @@
 #include "shm_p2p.h"
 #include "shm_rma.h"
 #include "shm_part.h"
+#include "shm_persist.h"
 #include "shm_hooks.h"
 #endif
 

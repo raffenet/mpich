@@ -23,6 +23,7 @@
 #include "ofi_win.h"
 #include "ofi_rma.h"
 #include "ofi_part.h"
+#include "ofi_persist.h"
 #endif
 
 /* Not-inlined OFI netmod functions */

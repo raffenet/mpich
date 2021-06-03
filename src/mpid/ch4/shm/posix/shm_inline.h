@@ -15,6 +15,7 @@
 #include "posix_am.h"
 #include "posix_coll.h"
 #include "posix_part.h"
+#include "posix_persist.h"
 #include "posix_unimpl.h"
 
 /* Not-inlined shm functions */
