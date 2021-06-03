@@ -16,6 +16,7 @@
 #include "ucx_rma.h"
 #include "ucx_coll.h"
 #include "ucx_part.h"
+#include "ucx_persist.h"
 #endif
 
 #include "ucx_progress.h"
