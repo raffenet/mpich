@@ -135,6 +135,22 @@ Native API:
       NM*: buf, count, datatype, rank, tag, comm, context_offset, addr, req_p
      SHM*: buf, count, datatype, rank, tag, comm, context_offset, addr, req_p
      MPIDIG: buf, count, datatype, rank, tag, comm, context_offset, addr, req_p
+  mpi_send_init : int
+      NM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     SHM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     MPIDIG: buf, count, datatype, rank, tag, comm, context_offset, req_p
+  mpi_ssend_init : int
+      NM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     SHM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     MPIDIG: buf, count, datatype, rank, tag, comm, context_offset, req_p
+  mpi_bsend_init : int
+      NM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     SHM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     MPIDIG: buf, count, datatype, rank, tag, comm, context_offset, req_p
+  mpi_rsend_init : int
+      NM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     SHM: buf, count, datatype, rank, tag, comm, context_offset, req_p
+     MPIDIG: buf, count, datatype, rank, tag, comm, context_offset, req_p
   mpi_cancel_send : int
       NM*: sreq
      SHM*: sreq

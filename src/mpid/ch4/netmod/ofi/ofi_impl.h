@@ -12,6 +12,7 @@
 #include "ofi_types.h"
 #include "mpidch4r.h"
 #include "mpidig_am.h"
+#include "mpidig_persist.h"
 #include "ch4_impl.h"
 
 #define MPIDI_OFI_ENAVAIL   -1  /* OFI resource not available */
