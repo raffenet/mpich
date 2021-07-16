@@ -54,7 +54,7 @@ AM_COND_IF([BUILD_CH4_NETMOD_UCX],[
 
         AC_MSG_CHECKING([if UCX meets minimum version requirement])
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <ucp/api/ucp.h>], [
-                           #if UCP_VERSION(UCP_API_MAJOR, UCP_API_MINOR) < UCP_VERSION(1, 7)
+                           #if UCP_VERSION(UCP_API_MAJOR, UCP_API_MINOR) < UCP_VERSION(1, 9)
                            #error
                            #endif
                            return 0;])],[ucx_happy=yes],[ucx_happy=no])
@@ -62,7 +62,7 @@ AM_COND_IF([BUILD_CH4_NETMOD_UCX],[
 
         # if a too old UCX was found, throw an error
         if test "$ucx_happy" = "no" ; then
-            AC_MSG_ERROR([UCX installation does not meet minimum version requirement (v1.7.0). Please upgrade your installation, or use --with-ucx=embedded.])
+            AC_MSG_ERROR([UCX installation does not meet minimum version requirement (v1.9.0). Please upgrade your installation, or use --with-ucx=embedded.])
         fi
         PAC_LIBS_ADD([-lucp -lucs])
     fi
