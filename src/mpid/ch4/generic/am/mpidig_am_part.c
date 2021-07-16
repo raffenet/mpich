@@ -123,9 +123,8 @@ int MPIDIG_mpi_psend_init(void *buf, int partitions, MPI_Aint count,
     /* Initialize am components for send */
     part_req_am_init(*request);
 
-    MPIDI_av_entry_t *av = MPIDIU_comm_rank_to_av(comm, dest);
     CH4_CALL(mpi_psend_init_hook
-             (buf, partitions, count, datatype, dest, tag, comm, info, av, request),
+             (buf, partitions, count, datatype, dest, tag, comm, info, request),
              MPIDI_REQUEST(*request, is_local), mpi_errno);
     MPIR_ERR_CHECK(mpi_errno);
 
@@ -177,9 +176,8 @@ int MPIDIG_mpi_precv_init(void *buf, int partitions, int count,
     /* Initialize am components for receive */
     part_req_am_init(*request);
 
-    MPIDI_av_entry_t *av = MPIDIU_comm_rank_to_av(comm, source);
     CH4_CALL(mpi_precv_init_hook
-             (buf, partitions, count, datatype, source, tag, comm, info, av, request),
+             (buf, partitions, count, datatype, source, tag, comm, info, request),
              MPIDI_REQUEST(*request, is_local), mpi_errno);
     MPIR_ERR_CHECK(mpi_errno);
 
