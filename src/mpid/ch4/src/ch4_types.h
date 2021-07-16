@@ -94,9 +94,13 @@ typedef struct MPIDIG_part_send_init_msg_t {
     MPI_Aint data_sz;           /* size of entire send data */
 } MPIDIG_part_send_init_msg_t;
 
-typedef struct MPIDIG_part_cts_msg_t {
+typedef struct MPIDIG_part_recv_matched_msg_t {
     MPI_Request sreq;
     MPI_Request rreq;
+} MPIDIG_part_recv_matched_msg_t;
+
+typedef struct MPIDIG_part_cts_msg_t {
+    MPI_Request sreq;
 } MPIDIG_part_cts_msg_t;
 
 typedef struct MPIDIG_part_send_data_msg_t {

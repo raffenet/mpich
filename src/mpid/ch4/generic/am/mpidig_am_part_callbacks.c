@@ -101,9 +101,29 @@ int MPIDIG_part_send_init_target_msg_cb(int handler_id, void *am_hdr, void *data
     goto fn_exit;
 }
 
+/* Callback used on sender containing info for matching recv request */
+int MPIDIG_part_recv_matched_target_msg_cb(int handler_id, void *am_hdr, void *data,
+                                           MPI_Aint in_data_sz, int is_local, int is_async,
+                                           MPIR_Request ** req)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIR_FUNC_VERBOSE_STATE_DECL(MPID_STATE_MPIDIG_PART_CTS_TARGET_MSG_CB);
+    MPIR_FUNC_VERBOSE_ENTER(MPID_STATE_MPIDIG_PART_CTS_TARGET_MSG_CB);
+
+    MPIDIG_part_recv_matched_msg_t *msg_hdr = am_hdr;
+    MPIR_Request *part_sreq;
+    MPIR_Request_get_ptr(msg_hdr->sreq, part_sreq);
+    MPIR_Assert(part_sreq);
+
+    MPIDI_PART_REQUEST(part_sreq, peer_req) = msg_hdr->rreq;
+
+    MPIR_FUNC_VERBOSE_EXIT(MPID_STATE_MPIDIG_PART_CTS_TARGET_MSG_CB);
+    return mpi_errno;
+}
+
 /* Callback used on sender, triggered when received CTS from receiver.
- * It stores rreq pointer, updates local status, and optionally initiates
- * data transfer if all partitions have been marked as ready.
+ * Updates local status, and optionally initiates data transfer if all
+ * partitions have been marked as ready.
  */
 int MPIDIG_part_cts_target_msg_cb(int handler_id, void *am_hdr, void *data,
                                   MPI_Aint in_data_sz, int is_local, int is_async,
@@ -118,7 +138,6 @@ int MPIDIG_part_cts_target_msg_cb(int handler_id, void *am_hdr, void *data,
     MPIR_Request_get_ptr(msg_hdr->sreq, part_sreq);
     MPIR_Assert(part_sreq);
 
-    MPIDI_PART_REQUEST(part_sreq, peer_req) = msg_hdr->rreq;
     MPIDIG_PART_REQUEST(part_sreq, recv_epoch)++;
     if (MPIDIG_part_can_issue_data(part_sreq)) {
         mpi_errno = MPIDIG_part_issue_data(part_sreq, MPIDIG_PART_REPLY);
