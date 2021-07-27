@@ -13,11 +13,13 @@ typedef struct MPIDI_UCX_part_send_init_msg_t {
     MPIR_Context_id_t context_id;
     MPI_Request sreq;
     MPI_Aint data_sz;           /* size of entire send data */
+    int use_partitions;
 } MPIDI_UCX_part_send_init_msg_t;
 
 typedef struct MPIDI_UCX_part_recv_init_msg_t {
     MPI_Request sreq;
     MPI_Request rreq;
+    int use_partitions;
 } MPIDI_UCX_part_recv_init_msg_t;
 
 /* Callback used on receiver, triggered when received the send_init AM.
@@ -37,11 +39,9 @@ int MPIDI_UCX_part_send_init_target_msg_cb(int handler_id, void *am_hdr, void *d
     if (posted_req) {
         MPIDI_UCX_PART_REQ(posted_req).peer_req = msg_hdr->sreq;
         MPIDI_UCX_PART_REQ(posted_req).data_sz = msg_hdr->data_sz;
+        MPIDI_UCX_PART_REQ(posted_req).use_partitions = msg_hdr->use_partitions;
 
         MPIDI_UCX_precv_matched(posted_req);
-        if (MPIR_Part_request_is_active(posted_req)) {
-            MPIDI_UCX_part_recv(posted_req);
-        }
     } else {
         MPIR_Request *unexp_req;
 
@@ -55,6 +55,7 @@ int MPIDI_UCX_part_send_init_target_msg_cb(int handler_id, void *am_hdr, void *d
         MPIDI_PART_REQUEST(unexp_req, context_id) = msg_hdr->context_id;
         MPIDI_UCX_PART_REQ(unexp_req).peer_req = msg_hdr->sreq;
         MPIDI_UCX_PART_REQ(unexp_req).data_sz = msg_hdr->data_sz;
+        MPIDI_UCX_PART_REQ(unexp_req).use_partitions = msg_hdr->use_partitions;
 
         MPIDIG_enqueue_request(unexp_req, &MPIDI_global.part_unexp_list, MPIDIG_PART);
     }
@@ -84,9 +85,14 @@ int MPIDI_UCX_part_recv_init_target_msg_cb(int handler_id, void *am_hdr, void *d
     MPIR_Assert(part_sreq);
 
     MPIDI_UCX_PART_REQ(part_sreq).peer_req = msg_hdr->rreq;
+    if (msg_hdr->use_partitions != MPIDI_UCX_PART_REQ(part_sreq).use_partitions) {
+        MPIDI_UCX_PART_REQ(part_sreq).use_partitions = 1;
+        MPIDI_UCX_PART_REQ(part_sreq).use_count *= part_sreq->u.part.partitions;
+    }
+
     if (MPIR_Part_request_is_active(part_sreq) &&
         MPIR_cc_get(MPIDI_UCX_PART_REQ(part_sreq).parts_left) == 0) {
-        MPIDI_UCX_part_send(part_sreq);
+        MPIDI_UCX_part_send(part_sreq, 0);
     }
 
     /* release handshake reference */
@@ -104,6 +110,7 @@ int MPIDI_UCX_part_send_init_hdr(MPIR_Request * request)
     am_hdr.tag = MPIDI_PART_REQUEST(request, tag);
     am_hdr.context_id = request->comm->context_id;
     am_hdr.sreq = request->handle;
+    am_hdr.use_partitions = MPIDI_UCX_PART_REQ(request).use_partitions;
 
     MPI_Aint dtype_size;
     MPIR_Datatype_get_size_macro(MPIDI_PART_REQUEST(request, datatype), dtype_size);
@@ -119,6 +126,7 @@ int MPIDI_UCX_part_recv_init_hdr(MPIR_Request * request)
     MPIDI_UCX_part_recv_init_msg_t am_hdr;
     am_hdr.sreq = MPIDI_UCX_PART_REQ(request).peer_req;
     am_hdr.rreq = request->handle;
+    am_hdr.use_partitions = MPIDI_UCX_PART_REQ(request).use_partitions;
 
     return MPIDI_NM_am_send_hdr(MPIDI_PART_REQUEST(request, rank), request->comm,
                                 MPIDI_UCX_PART_RECV_INIT, &am_hdr, sizeof(am_hdr));

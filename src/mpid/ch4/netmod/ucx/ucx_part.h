@@ -14,7 +14,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
     MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
 
     MPIR_Request_add_ref(request);
-    MPIR_cc_set(&request->cc, 1);
 
     /* FIXME: to avoid this we need to modify the noncontig type handling
      * to not free the datatype for persistent/partitioned communication */
@@ -28,13 +27,27 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
         MPIR_Datatype_ptr_add_ref(dt_ptr);
     }
 
-    if (request->kind == MPIR_REQUEST_KIND__PART_RECV &&
-        MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL) {
-        MPIDI_UCX_part_recv(request);
-    } else if (request->kind == MPIR_REQUEST_KIND__PART_SEND) {
-        MPIR_cc_set(&MPIDI_UCX_PART_REQ(request).parts_left, request->u.part.partitions);
+    if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
+        MPIR_cc_set(&request->cc, 1);
+        if (request->kind == MPIR_REQUEST_KIND__PART_SEND) {
+            MPIR_cc_set(&MPIDI_UCX_PART_REQ(request).parts_left, request->u.part.partitions);
+        } else {
+            MPIDI_UCX_part_recv(request);
+        }
+
+        goto fn_exit;
     }
 
+    MPIR_cc_set(&request->cc, MPIDI_UCX_PART_REQ(request).use_partitions);
+    if (request->kind == MPIR_REQUEST_KIND__PART_RECV) {
+        MPIDI_UCX_part_recv(request);
+    } else {    /* send request */
+        if (MPIDI_UCX_PART_REQ(request).use_partitions == 1) {
+            MPIR_cc_set(&MPIDI_UCX_PART_REQ(request).parts_left, request->u.part.partitions);
+        }
+    }
+
+  fn_exit:
     MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
 
     return MPI_SUCCESS;
@@ -43,36 +56,72 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_range(int partition_low,
                                                        int partition_high, MPIR_Request * request)
 {
-    int num_ready = partition_high - partition_low + 1;
-
-    for (int i = 0; i < num_ready; i++) {
-        MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
-    }
-
     MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
-    if (MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL &&
-        MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0) {
-        MPIDI_UCX_part_send(request);
-    }
-    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
 
+    if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
+        for (int i = partition_low; i <= partition_high; i++) {
+            MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
+        }
+
+        if (MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0 &&
+            MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL) {
+            MPIDI_UCX_part_send(request, 0);
+        }
+
+        goto fn_exit;
+    }
+
+    for (int i = partition_low; i <= partition_high; i++) {
+        if (MPIDI_UCX_PART_REQ(request).use_partitions == 1) {
+            MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
+        } else {
+            MPIDI_UCX_part_send(request, i);
+        }
+    }
+
+    if (MPIDI_UCX_PART_REQ(request).use_partitions == 1 &&
+        MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0) {
+        MPIDI_UCX_part_send(request, 0);
+    }
+
+  fn_exit:
+    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
     return MPI_SUCCESS;
 }
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_list(int length, int array_of_partitions[],
                                                       MPIR_Request * request)
 {
-    for (int i = 0; i < length; i++) {
-        MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
-    }
-
     MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
-    if (MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL &&
-        MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0) {
-        MPIDI_UCX_part_send(request);
-    }
-    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
 
+    if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
+        for (int i = 0; i < length; i++) {
+            MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
+        }
+
+        if (MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0 &&
+            MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL) {
+            MPIDI_UCX_part_send(request, 0);
+        }
+
+        goto fn_exit;
+    }
+
+    for (int i = 0; i < length; i++) {
+        if (MPIDI_UCX_PART_REQ(request).use_partitions == 1) {
+            MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
+        } else {
+            MPIDI_UCX_part_send(request, array_of_partitions[i]);
+        }
+    }
+
+    if (MPIDI_UCX_PART_REQ(request).use_partitions == 1 &&
+        MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0) {
+        MPIDI_UCX_part_send(request, 0);
+    }
+
+  fn_exit:
+    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
     return MPI_SUCCESS;
 }
 

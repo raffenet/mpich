@@ -33,6 +33,7 @@ static int part_req_create(void *buf, int partitions, MPI_Aint count,
 
     MPIDI_UCX_PART_REQ(req).peer_req = MPI_REQUEST_NULL;
     MPIDI_UCX_PART_REQ(req).ep = MPIDI_UCX_COMM_TO_EP(comm, rank, 0, 0);
+    MPIDI_UCX_PART_REQ(req).is_first_iteration = true;
 
     int is_contig;
     MPI_Aint true_lb;
@@ -44,12 +45,18 @@ static int part_req_create(void *buf, int partitions, MPI_Aint count,
         MPIR_Assert(dt_ptr != NULL);
         MPIDI_UCX_PART_REQ(req).ucp_dt = dt_ptr->dev.netmod.ucx.ucp_datatype;
         MPIDI_PART_REQUEST(req, buffer) = buf;
+        MPIDI_UCX_PART_REQ(req).use_partitions = 1;
+        MPIDI_UCX_PART_REQ(req).use_count = count * partitions;
+        MPIDI_UCX_PART_REQ(req).first_count = count * partitions;
     } else {
         MPI_Aint dt_size;
 
         MPIR_Datatype_get_size_macro(datatype, dt_size);
-        MPIDI_UCX_PART_REQ(req).ucp_dt = ucp_dt_make_contig(dt_size);
+        MPIDI_UCX_PART_REQ(req).ucp_dt = ucp_dt_make_contig(1);
         MPIDI_PART_REQUEST(req, buffer) = (char *) buf + true_lb;
+        MPIDI_UCX_PART_REQ(req).use_partitions = partitions;
+        MPIDI_UCX_PART_REQ(req).use_count = dt_size * count;
+        MPIDI_UCX_PART_REQ(req).first_count = dt_size * count * partitions;
     }
 
     /* Inactive partitioned comm request can be freed by request_free.
@@ -116,6 +123,7 @@ int MPIDI_UCX_mpi_precv_init(void *buf, int partitions, MPI_Aint count,
     if (unexp_req) {
         MPIDI_UCX_PART_REQ(*request).peer_req = MPIDI_UCX_PART_REQ(unexp_req).peer_req;
         MPIDI_UCX_PART_REQ(*request).data_sz = MPIDI_UCX_PART_REQ(unexp_req).data_sz;
+        MPIDI_UCX_PART_REQ(*request).use_partitions = MPIDI_UCX_PART_REQ(unexp_req).use_partitions;
         MPIDI_CH4_REQUEST_FREE(unexp_req);
 
         MPIDI_UCX_precv_matched(*request);
@@ -153,6 +161,18 @@ void MPIDI_UCX_precv_matched(MPIR_Request * request)
                                      "**ch4|partmismatchsize %d %d",
                                      (int) rdata_size, (int) sdata_size);
         }
+    }
+
+    /* Determine fine-grained partitioning */
+    int is_contig;
+    MPIR_Datatype_is_contig(MPIDI_PART_REQUEST(request, datatype), &is_contig);
+    if (!is_contig) {
+        /* use single send/recv */
+        MPIDI_UCX_PART_REQ(request).use_partitions = 1;
+    } else {
+        /* adjust partition size */
+        MPIDI_UCX_PART_REQ(request).use_count =
+            MPIDI_UCX_PART_REQ(request).data_sz / MPIDI_UCX_PART_REQ(request).use_partitions;
     }
 
     MPIDI_UCX_part_recv_init_hdr(request);

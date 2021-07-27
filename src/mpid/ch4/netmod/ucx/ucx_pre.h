@@ -79,11 +79,15 @@ typedef struct {
 } MPIDI_UCX_op_t;
 
 typedef struct {
+    bool is_first_iteration;
+    MPI_Aint first_count;
     MPI_Request peer_req;
     MPI_Aint data_sz;           /* only used for error checking at match time */
     ucp_ep_h ep;
     ucp_datatype_t ucp_dt;
-    MPIR_cc_t parts_left;
+    MPIR_cc_t parts_left;       /* sender */
+    int use_partitions;         /* send and recv */
+    MPI_Aint use_count;         /* send and recv */
 } MPIDI_UCX_part_t;
 
 #endif /* UCX_PRE_H_INCLUDED */

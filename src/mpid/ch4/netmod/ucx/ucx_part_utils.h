@@ -51,16 +51,35 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_recv(MPIR_Request * request)
         .user_data = request,
     };
 
-    status = ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[0].worker,
-                              MPIDI_PART_REQUEST(request, buffer),
-                              MPIDI_PART_REQUEST(request, count) * request->u.part.partitions,
-                              MPIDI_UCX_part_tag(request, 0), 0xffffffffffffffff, &param);
-    if (status == NULL) {
-        MPIDIU_request_complete(request);
+    if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
+        status = ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[0].worker,
+                                  (char *) MPIDI_PART_REQUEST(request,
+                                                              buffer),
+                                  MPIDI_UCX_PART_REQ(request).first_count,
+                                  MPIDI_UCX_part_tag(request, 0), 0xffffffffffffffff, &param);
+        if (status == NULL) {
+            MPIDIU_request_complete(request);
+        }
+        MPIDI_UCX_PART_REQ(request).is_first_iteration = false;
+
+        return;
+    }
+
+    for (int i = 0; i < MPIDI_UCX_PART_REQ(request).use_partitions; i++) {
+        status = ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[0].worker,
+                                  (char *) MPIDI_PART_REQUEST(request,
+                                                              buffer) +
+                                  i * MPIDI_UCX_PART_REQ(request).use_count,
+                                  MPIDI_UCX_PART_REQ(request).use_count, MPIDI_UCX_part_tag(request,
+                                                                                            i),
+                                  0xffffffffffffffff, &param);
+        if (status == NULL) {
+            MPIDIU_request_complete(request);
+        }
     }
 }
 
-MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request)
+MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request, int partition)
 {
     ucs_status_ptr_t status;
     ucp_request_param_t param = {
@@ -71,10 +90,26 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request)
         .user_data = request,
     };
 
+    if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
+        status = ucp_tag_send_nbx(MPIDI_UCX_PART_REQ(request).ep,
+                                  (char *) MPIDI_PART_REQUEST(request,
+                                                              buffer),
+                                  MPIDI_UCX_PART_REQ(request).first_count,
+                                  MPIDI_UCX_part_tag(request, 0), &param);
+        if (status == NULL) {
+            MPIDIU_request_complete(request);
+        }
+        MPIDI_UCX_PART_REQ(request).is_first_iteration = false;
+
+        return;
+    }
+
     status = ucp_tag_send_nbx(MPIDI_UCX_PART_REQ(request).ep,
-                              MPIDI_PART_REQUEST(request, buffer),
-                              MPIDI_PART_REQUEST(request, count) * request->u.part.partitions,
-                              MPIDI_UCX_part_tag(request, 0), &param);
+                              (char *) MPIDI_PART_REQUEST(request,
+                                                          buffer) +
+                              MPIDI_UCX_PART_REQ(request).use_count * partition,
+                              MPIDI_UCX_PART_REQ(request).use_count,
+                              MPIDI_UCX_part_tag(request, partition), &param);
     if (status == NULL) {
         MPIDIU_request_complete(request);
     }
