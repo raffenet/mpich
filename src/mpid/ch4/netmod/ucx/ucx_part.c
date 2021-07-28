@@ -32,7 +32,9 @@ static int part_req_create(void *buf, int partitions, MPI_Aint count,
 #endif
 
     MPIDI_UCX_PART_REQ(req).peer_req = MPI_REQUEST_NULL;
-    MPIDI_UCX_PART_REQ(req).ep = MPIDI_UCX_COMM_TO_EP(comm, rank, 0, 0);
+    for (int i = 0; i < MPIDI_UCX_global.num_vnis; i++) {
+        MPIDI_UCX_PART_REQ(req).ep[i] = MPIDI_UCX_COMM_TO_EP(comm, rank, i, 0);
+    }
     MPIDI_UCX_PART_REQ(req).is_first_iteration = true;
 
     int is_contig;

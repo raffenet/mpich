@@ -83,7 +83,7 @@ typedef struct {
     MPI_Aint first_count;
     MPI_Request peer_req;
     MPI_Aint data_sz;           /* only used for error checking at match time */
-    ucp_ep_h ep;
+    ucp_ep_h ep[MPIDI_CH4_MAX_VCIS];
     ucp_datatype_t ucp_dt;
     MPIR_cc_t parts_left;       /* sender */
     int use_partitions;         /* send and recv */

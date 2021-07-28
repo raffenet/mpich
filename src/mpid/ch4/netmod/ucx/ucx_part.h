@@ -51,8 +51,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_range(int partition_low,
                                                        int partition_high, MPIR_Request * request)
 {
-    MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
-
     if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
         for (int i = partition_low; i <= partition_high; i++) {
             MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
@@ -60,7 +58,9 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_range(int partition_low,
 
         if (MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0 &&
             MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL) {
-            MPIDI_UCX_part_send(request, 0);
+            MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
+            MPIDI_UCX_part_send(request, 0, 0);
+            MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
         }
 
         goto fn_exit;
@@ -70,25 +70,27 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_range(int partition_low,
         if (MPIDI_UCX_PART_REQ(request).use_partitions == 1) {
             MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
         } else {
-            MPIDI_UCX_part_send(request, i);
+            int vci = MPIDI_UCX_part_get_vci(i);
+            MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(vci).lock);
+            MPIDI_UCX_part_send(request, i, vci);
+            MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(vci).lock);
         }
     }
 
     if (MPIDI_UCX_PART_REQ(request).use_partitions == 1 &&
         MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0) {
-        MPIDI_UCX_part_send(request, 0);
+        MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
+        MPIDI_UCX_part_send(request, 0, 0);
+        MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
     }
 
   fn_exit:
-    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
     return MPI_SUCCESS;
 }
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_list(int length, int array_of_partitions[],
                                                       MPIR_Request * request)
 {
-    MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
-
     if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
         for (int i = 0; i < length; i++) {
             MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
@@ -96,7 +98,9 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_list(int length, int array_of_p
 
         if (MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0 &&
             MPIDI_UCX_PART_REQ(request).peer_req != MPI_REQUEST_NULL) {
-            MPIDI_UCX_part_send(request, 0);
+            MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
+            MPIDI_UCX_part_send(request, 0, 0);
+            MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
         }
 
         goto fn_exit;
@@ -106,17 +110,21 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_mpi_pready_list(int length, int array_of_p
         if (MPIDI_UCX_PART_REQ(request).use_partitions == 1) {
             MPIR_cc_dec(&MPIDI_UCX_PART_REQ(request).parts_left);
         } else {
-            MPIDI_UCX_part_send(request, array_of_partitions[i]);
+            int vci = MPIDI_UCX_part_get_vci(array_of_partitions[i]);
+            MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(vci).lock);
+            MPIDI_UCX_part_send(request, array_of_partitions[i], vci);
+            MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(vci).lock);
         }
     }
 
     if (MPIDI_UCX_PART_REQ(request).use_partitions == 1 &&
         MPIR_cc_get(MPIDI_UCX_PART_REQ(request).parts_left) == 0) {
-        MPIDI_UCX_part_send(request, 0);
+        MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
+        MPIDI_UCX_part_send(request, 0, 0);
+        MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
     }
 
   fn_exit:
-    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
     return MPI_SUCCESS;
 }
 

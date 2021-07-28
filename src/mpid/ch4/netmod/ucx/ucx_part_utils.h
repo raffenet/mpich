@@ -6,6 +6,15 @@
 #ifndef UCX_PART_UTILS_H_INCLUDED
 #define UCX_PART_UTILS_H_INCLUDED
 
+MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_part_get_vci(int partition)
+{
+#if MPIDI_CH4_VCI_METHOD == MPICH_VCI__ZERO
+    return 0;
+#else
+    return partition % MPIDI_UCX_global.num_vnis;
+#endif
+}
+
 MPL_STATIC_INLINE_PREFIX uint64_t MPIDI_UCX_part_tag(MPIR_Request * request, int partition)
 {
     uint64_t tag;
@@ -79,7 +88,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_recv(MPIR_Request * request)
     }
 }
 
-MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request, int partition)
+MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request, int partition, int vci)
 {
     ucs_status_ptr_t status;
     ucp_request_param_t param = {
@@ -91,7 +100,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request, int pa
     };
 
     if (unlikely(MPIDI_UCX_PART_REQ(request).is_first_iteration)) {
-        status = ucp_tag_send_nbx(MPIDI_UCX_PART_REQ(request).ep,
+        status = ucp_tag_send_nbx(MPIDI_UCX_PART_REQ(request).ep[0],
                                   (char *) MPIDI_PART_REQUEST(request,
                                                               buffer),
                                   MPIDI_UCX_PART_REQ(request).first_count,
@@ -104,7 +113,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_send(MPIR_Request * request, int pa
         return;
     }
 
-    status = ucp_tag_send_nbx(MPIDI_UCX_PART_REQ(request).ep,
+    status = ucp_tag_send_nbx(MPIDI_UCX_PART_REQ(request).ep[vci],
                               (char *) MPIDI_PART_REQUEST(request,
                                                           buffer) +
                               MPIDI_UCX_PART_REQ(request).use_count * partition,

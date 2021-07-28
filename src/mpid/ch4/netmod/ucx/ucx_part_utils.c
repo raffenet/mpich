@@ -92,7 +92,7 @@ int MPIDI_UCX_part_recv_init_target_msg_cb(int handler_id, void *am_hdr, void *d
 
     if (MPIR_Part_request_is_active(part_sreq) &&
         MPIR_cc_get(MPIDI_UCX_PART_REQ(part_sreq).parts_left) == 0) {
-        MPIDI_UCX_part_send(part_sreq, 0);
+        MPIDI_UCX_part_send(part_sreq, 0, 0);
     }
 
     /* release handshake reference */
