@@ -11,8 +11,6 @@
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
 {
-    MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(0).lock);
-
     MPIR_Request_add_ref(request);
 
     /* FIXME: to avoid this we need to modify the noncontig type handling
@@ -35,7 +33,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
             MPIDI_UCX_part_recv(request);
         }
 
-        goto fn_exit;
+        return MPI_SUCCESS;
     }
 
     MPIR_cc_set(&request->cc, MPIDI_UCX_PART_REQ(request).use_partitions);
@@ -46,9 +44,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_NM_part_start(MPIR_Request * request)
             MPIR_cc_set(&MPIDI_UCX_PART_REQ(request).parts_left, request->u.part.partitions);
         }
     }
-
-  fn_exit:
-    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(0).lock);
 
     return MPI_SUCCESS;
 }
