@@ -282,6 +282,7 @@ typedef struct MPIDI_Devreq_t {
     struct MPIR_Request *anysource_partner_request;
 #endif
 
+    char pad[MPL_CACHELINE_SIZE];
     union {
         /* The first fields are used by the MPIDIG apis */
         MPIDIG_req_t am;
