@@ -75,7 +75,7 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_part_recv(MPIR_Request * request)
     }
 
     for (int i = 0; i < MPIDI_UCX_PART_REQ(request).use_partitions; i++) {
-        status = ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[i % MPIDI_UCX_global.num_vnis].worker,
+        status = ucp_tag_recv_nbx(MPIDI_UCX_global.ctx[0].worker,
                                   (char *) MPIDI_PART_REQUEST(request,
                                                               buffer) +
                                   i * MPIDI_UCX_PART_REQ(request).use_count,
