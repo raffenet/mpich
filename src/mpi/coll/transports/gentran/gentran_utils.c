@@ -197,6 +197,7 @@ static int vtx_issue(int vtxid, MPII_Genutil_vtx_t * vtxp, MPII_Genutil_sched_t 
                     vtx_record_completion(vtxp, sched, 0);
                 }
                 break;
+
             case MPII_GENUTIL_VTX_KIND__SELECTIVE_SINK:{
                     MPL_DBG_MSG_FMT(MPIR_DBG_COLL, VERBOSE,
                                     (MPL_DBG_FDEST,
@@ -205,6 +206,7 @@ static int vtx_issue(int vtxid, MPII_Genutil_vtx_t * vtxp, MPII_Genutil_sched_t 
                     vtx_record_completion(vtxp, sched, 0);
                 }
                 break;
+
             case MPII_GENUTIL_VTX_KIND__SINK:{
                     MPL_DBG_MSG_FMT(MPIR_DBG_COLL, VERBOSE,
                                     (MPL_DBG_FDEST, "  --> GENTRAN transport (sink) performed"));
