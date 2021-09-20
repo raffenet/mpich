@@ -1566,6 +1566,7 @@
 /threads/part/parrived_wait
 /threads/perf/mt_pt2pt_msgrate
 /threads/perf/mt_rma_msgrate
+/threads/perf/mt_rma_msgrate_flush
 /threads/pt2pt/alltoall
 /threads/pt2pt/greq_test
 /threads/pt2pt/greq_wait
