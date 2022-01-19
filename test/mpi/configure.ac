@@ -439,10 +439,9 @@ AC_MSG_RESULT($MPI_IS_MPICH)
 #
 # Since F90/F90FLAGS are replaced by FC/FCFLAGS, rather than silently
 # substituting them, i.e. FC=$F90 and FCFLAGS=$F90FLAGS, we choose to emit
-# an error message and abort to avoid any ambiguous/hidden bug in choosing
-# Fortran90 compilers.
+# a warning.
 if test -n "$F90" -o -n "$F90FLAGS" ; then
-    AC_MSG_ERROR([F90 and F90FLAGS are replaced by FC and FCFLAGS respectively in this configure, please unset F90/F90FLAGS and set FC/FCFLAGS instead and rerun configure again.])
+    AC_MSG_WARN([F90 and F90FLAGS are ignored by this configure. Please use FC/FCFLAGS to specify a Fortran compiler and flags.])
 fi
 
 # errordir is substituted into the testlist file as errors when the
