@@ -160,6 +160,9 @@ int MPID_Isend(const void * buf, MPI_Aint count, MPI_Datatype datatype, int rank
 
   fn_exit:
     *request = sreq;
+    if (sreq != NULL) {
+        MPII_SENDQ_REMEMBER(sreq, rank, tag, comm->context_id, buf, count);
+    }
 
     MPL_DBG_STMT(MPIDI_CH3_DBG_OTHER,VERBOSE,
     {

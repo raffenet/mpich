@@ -147,6 +147,9 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_issend(const void *buf,
     MPIR_ERR_CHECK(mpi_errno);
 #endif
 
+    if (*req != NULL) {
+        MPII_SENDQ_REMEMBER(*req, rank, tag, comm->context_id, buf, count);
+    }
   fn_exit:
     MPIR_FUNC_EXIT;
     return mpi_errno;
@@ -174,8 +177,11 @@ MPL_STATIC_INLINE_PREFIX int MPID_Isend(const void *buf,
         av = MPIDIU_comm_rank_to_av(comm, rank);
         mpi_errno = MPIDI_isend(buf, count, datatype, rank, tag, comm, context_offset, av, request);
     }
-
     MPIR_ERR_CHECK(mpi_errno);
+
+    if (*request != NULL) {
+        MPII_SENDQ_REMEMBER(*request, rank, tag, comm->context_id, buf, count);
+    }
   fn_exit:
     MPIR_FUNC_EXIT;
     return mpi_errno;
@@ -204,8 +210,11 @@ MPL_STATIC_INLINE_PREFIX int MPID_Isend_coll(const void *buf,
         mpi_errno = MPIDI_isend_coll(buf, count, datatype, rank, tag, comm, context_offset,
                                      av, request, errflag);
     }
-
     MPIR_ERR_CHECK(mpi_errno);
+
+    if (*request != NULL) {
+        MPII_SENDQ_REMEMBER(*request, rank, tag, comm->context_id, buf, count);
+    }
   fn_exit:
     MPIR_FUNC_EXIT;
     return mpi_errno;
@@ -271,8 +280,11 @@ MPL_STATIC_INLINE_PREFIX int MPID_Irsend(const void *buf,
         av = MPIDIU_comm_rank_to_av(comm, rank);
         mpi_errno = MPIDI_isend(buf, count, datatype, rank, tag, comm, context_offset, av, request);
     }
-
     MPIR_ERR_CHECK(mpi_errno);
+
+    if (*request != NULL) {
+        MPII_SENDQ_REMEMBER(*request, rank, tag, comm->context_id, buf, count);
+    }
   fn_exit:
     MPIR_FUNC_EXIT;
     return mpi_errno;
@@ -311,8 +323,11 @@ MPL_STATIC_INLINE_PREFIX int MPID_Issend(const void *buf,
         mpi_errno =
             MPIDI_issend(buf, count, datatype, rank, tag, comm, context_offset, av, request);
     }
-
     MPIR_ERR_CHECK(mpi_errno);
+
+    if (*request != NULL) {
+        MPII_SENDQ_REMEMBER(*request, rank, tag, comm->context_id, buf, count);
+    }
   fn_exit:
     MPIR_FUNC_EXIT;
     return mpi_errno;
