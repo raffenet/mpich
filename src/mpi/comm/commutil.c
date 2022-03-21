@@ -252,6 +252,9 @@ int MPII_Comm_init(MPIR_Comm * comm_p)
     comm_p->revoked = 0;
     comm_p->mapper_head = NULL;
     comm_p->mapper_tail = NULL;
+#ifdef HAVE_DEBUGGER_SUPPORT
+    comm_p->dbg_rank_map = NULL;
+#endif
 
     /* mutex is only used in POBJ or VCI granularity. But the overhead of
      * creation is low, so we always create it. */
@@ -1057,6 +1060,9 @@ int MPIR_Comm_delete_internal(MPIR_Comm * comm_ptr)
             MPIR_Comm_release(comm_ptr->node_roots_comm);
         MPL_free(comm_ptr->intranode_table);
         MPL_free(comm_ptr->internode_table);
+#ifdef HAVE_DEBUGGER_SUPPORT
+        MPL_free(comm_ptr->dbg_rank_map);
+#endif
 
         /* Free the context value.  This should come after freeing the
          * intra/inter-node communicators since those free calls won't
