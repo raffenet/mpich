@@ -91,6 +91,8 @@ int dbgrI_field_offset(mqs_type * type, char *name)
                     off = ((char *) &c.context_id - (char *) &c.handle);
                 } else if (strcmp(name, "recvcontext_id") == 0) {
                     off = ((char *) &c.recvcontext_id - (char *) &c.handle);
+                } else if (strcmp(name, "dbg_rank_map") == 0) {
+                    off = ((char *) &c.dbg_rank_map - (char *) &c.handle);
                 } else if (strcmp(name, "dev") == 0) {
                     off = ((char *) &c.dev - (char *) &c.handle);
                 } else {

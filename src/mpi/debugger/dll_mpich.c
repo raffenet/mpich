@@ -79,7 +79,7 @@ enum {
 /* Internal structure we hold for each communicator */
 typedef struct communicator_t {
     struct communicator_t *next;
-    group_t *group;             /* Translations */
+    mqs_taddr_t lrank_to_grank; /* Translations */
     int context_id;             /* To catch changes */
     int recvcontext_id;         /* May also be needed for
                                  * matchine */
@@ -95,9 +95,9 @@ static int rebuild_communicator_list(mqs_process * proc);
 static int compare_comms(const void *a, const void *b);
 
 static group_t *find_or_create_group(mqs_process * proc, mqs_tword_t np, mqs_taddr_t table);
-static int translate(group_t * this, int idx);
+static int translate(communicator_t * this, int idx);
 #if 0
-static int reverse_translate(group_t * this, int idx);
+static int reverse_translate(communicator_t * this, int idx);
 #endif
 static void group_decref(group_t * group);
 static communicator_t *find_communicator(mpich_process_info * p_info,
@@ -284,6 +284,7 @@ int mqs_image_has_queues(mqs_image * image, const char **message)
             i_info->comm_context_id_offs = dbgr_field_offset(co_type, (char *) "context_id");
             i_info->comm_recvcontext_id_offs =
                 dbgr_field_offset(co_type, (char *) "recvcontext_id");
+            i_info->lrank_to_grank_offs = dbgr_field_offset(co_type, (char *) "dbg_rank_map");
         }
     }
 
@@ -607,79 +608,7 @@ static int fetch_receive(mqs_process * proc, mpich_process_info * p_info,
             base = fetch_pointer(proc, base + i_info->debugq_next_offs, p_info);
         }
     }
-#if 0
-    while (base != 0) { /* Well, there's a queue, at least ! */
-        mqs_tword_t actual_context = fetch_int16(proc, base + i_info->context_id_offs, p_info);
 
-        if (actual_context == wanted_context) { /* Found a good one */
-            mqs_tword_t tag = fetch_int(proc, base + i_info->tag_offs, p_info);
-            mqs_tword_t tagmask = fetch_int(proc, base + i_info->tagmask_offs, p_info);
-            mqs_tword_t lsrc = fetch_int(proc, base + i_info->lsrc_offs, p_info);
-            mqs_tword_t srcmask = fetch_int(proc, base + i_info->srcmask_offs, p_info);
-            mqs_taddr_t ptr = fetch_pointer(proc, base + i_info->ptr_offs, p_info);
-
-            /* Fetch the fields from the MPIR_RHANDLE */
-            int is_complete = fetch_int(proc, ptr + i_info->is_complete_offs, p_info);
-            mqs_taddr_t buf = fetch_pointer(proc, ptr + i_info->buf_offs, p_info);
-            mqs_tword_t len = fetch_int(proc, ptr + i_info->len_offs, p_info);
-            mqs_tword_t count = fetch_int(proc, ptr + i_info->count_offs, p_info);
-
-            /* If we don't have start, then use buf instead... */
-            mqs_taddr_t start;
-            if (i_info->start_offs < 0)
-                start = buf;
-            else
-                start = fetch_pointer(proc, ptr + i_info->start_offs, p_info);
-
-            /* Hurrah, we should now be able to fill in all the necessary fields in the
-             * result !
-             */
-            res->status = is_complete ? mqs_st_complete : mqs_st_pending;       /* We can't discern matched */
-            if (srcmask == 0) {
-                res->desired_local_rank = -1;
-                res->desired_global_rank = -1;
-            } else {
-                res->desired_local_rank = lsrc;
-                res->desired_global_rank = translate(comm->group, lsrc);
-
-            }
-            res->tag_wild = (tagmask == 0);
-            res->desired_tag = tag;
-
-            if (look_for_user_buffer) {
-                res->system_buffer = 0;
-                res->buffer = buf;
-                res->desired_length = len;
-            } else {
-                res->system_buffer = 1;
-                /* Correct an oddity. If the buffer length is zero then no buffer
-                 * is allocated, but the descriptor is left with random data.
-                 */
-                if (count == 0)
-                    start = 0;
-
-                res->buffer = start;
-                res->desired_length = count;
-            }
-
-            if (is_complete) {  /* Fill in the actual results, rather than what we were looking for */
-                mqs_tword_t mpi_source = fetch_int(proc, ptr + i_info->MPI_SOURCE_offs, p_info);
-                mqs_tword_t mpi_tag = fetch_int(proc, ptr + i_info->MPI_TAG_offs, p_info);
-
-                res->actual_length = count;
-                res->actual_tag = mpi_tag;
-                res->actual_local_rank = mpi_source;
-                res->actual_global_rank = translate(comm->group, mpi_source);
-            }
-
-            /* Don't forget to step the queue ! */
-            p_info->next_msg = base + i_info->debugq_next_offs;
-            return mqs_ok;
-        } else {        /* Try the next one */
-            base = fetch_pointer(proc, base + i_info->debugq_next_offs, p_info);
-        }
-    }
-#endif
     p_info->next_msg = 0;
     return mqs_end_of_list;
 }       /* fetch_receive */
@@ -737,7 +666,7 @@ static int fetch_send(mqs_process * proc, mpich_process_info * p_info, mqs_pendi
             /* Ok, fill in the results */
             res->status = (is_complete != 0) ? mqs_st_pending : mqs_st_complete;
             res->actual_local_rank = res->desired_local_rank = target;
-            res->actual_global_rank = res->desired_global_rank = translate(comm->group, target);
+            res->actual_global_rank = res->desired_global_rank = translate(comm, target);
             res->tag_wild = 0;
             res->actual_tag = res->desired_tag = tag;
             res->desired_length = res->actual_length = length;
@@ -770,7 +699,7 @@ static int fetch_send(mqs_process * proc, mpich_process_info * p_info, mqs_pendi
             /* Ok, fill in the results */
             res->status = complete ? mqs_st_complete : mqs_st_pending;  /* We can't discern matched */
             res->actual_local_rank = res->desired_local_rank = target;
-            res->actual_global_rank = res->desired_global_rank = translate(comm->group, target);
+            res->actual_global_rank = res->desired_global_rank = translate(comm, target);
             res->tag_wild = 0;
             res->actual_tag = res->desired_tag = tag;
             res->desired_length = res->actual_length = length;
@@ -874,16 +803,8 @@ static int rebuild_communicator_list(mqs_process * proc)
                                                                                  * it might have changed and we can't tell.
                                                                                  */
         } else {
-            mqs_taddr_t group_base = fetch_pointer(proc, comm_base + i_info->lrank_to_grank_offs,
-                                                   p_info);
             int np = fetch_int(proc, comm_base + i_info->comm_rsize_offs, p_info);
-            group_t *g = find_or_create_group(proc, np, group_base);
             communicator_t *nc;
-
-#if 0
-            if (!g)
-                return err_group_corrupt;
-#endif
 
             nc = (communicator_t *) dbgr_malloc(sizeof(communicator_t));
 
@@ -891,9 +812,10 @@ static int rebuild_communicator_list(mqs_process * proc)
             nc->next = p_info->communicator_list;
             p_info->communicator_list = nc;
             nc->present = 1;
-            nc->group = g;
             nc->context_id = send_ctx;
             nc->recvcontext_id = recv_ctx;
+            nc->lrank_to_grank =
+                fetch_pointer(proc, comm_base + i_info->lrank_to_grank_offs, p_info);
 
             strncpy(nc->comm_info.name, name, sizeof(nc->comm_info.name));
             nc->comm_info.unique_id = comm_base;
@@ -905,9 +827,6 @@ static int rebuild_communicator_list(mqs_process * proc)
                     "Adding communicator %p, send context=%d, recv context=%d, size=%d, name=%s\n",
                     comm_base, send_ctx, recv_ctx, np, name);
 #endif
-#if 0
-            nc->comm_info.local_rank = reverse_translate(g, dbgr_get_global_rank(proc));
-#endif
         }
         /* Step to the next communicator on the list */
         comm_base = fetch_pointer(proc, comm_base + i_info->comm_next_offs, p_info);
@@ -916,9 +835,7 @@ static int rebuild_communicator_list(mqs_process * proc)
     /* Now iterate over the list tidying up any communicators which
      * no longer exist, and cleaning the flags on any which do.
      */
-    commp = &p_info->communicator_list;
-
-    for (; *commp; commp = &(*commp)->next) {
+    for (commp = &p_info->communicator_list; *commp; commp = &(*commp)->next) {
         communicator_t *comm = *commp;
 
         if (comm->present) {
@@ -927,7 +844,7 @@ static int rebuild_communicator_list(mqs_process * proc)
         } else {
             /* It needs to be deleted */
             *commp = comm->next;        /* Remove from the list */
-            group_decref(comm->group);  /* Group is no longer referenced from here */
+            /* group_decref(comm->group);  /\* Group is no longer referenced from here *\/ */
             dbgr_free(comm);
         }
     }
@@ -1020,9 +937,14 @@ static mqs_tword_t fetch_int16(mqs_process * proc, mqs_taddr_t addr, mpich_proce
    MPI_COMM_WORLD equivalents.  This code is not yet implemented
 */
 /* ------------------------------------------------------------------------- */
-/* idx is rank in group this; return rank in MPI_COMM_WORLD */
-static int translate(group_t * this, int idx)
+/* idx is rank in comm this; return rank in MPI_COMM_WORLD */
+static int translate(communicator_t * this, int idx)
 {
+    if (this->lrank_to_grank != 0) {
+        int *rank_map = (int *) this->lrank_to_grank;
+        return rank_map[idx];
+    }
+
     return -1;
 }
 
