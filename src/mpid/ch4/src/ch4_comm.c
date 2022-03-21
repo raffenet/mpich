@@ -189,6 +189,16 @@ int MPID_Comm_commit_pre_hook(MPIR_Comm * comm)
         }
     }
 
+#ifdef HAVE_DEBUGGER_SUPPORT
+    if (comm->comm_kind == MPIR_COMM_KIND__INTRACOMM) {
+        comm->dbg_rank_map = MPL_malloc(sizeof(int) * MPIR_Comm_size(comm));
+        MPIR_Assert(comm->dbg_rank_map);
+        for (int i = 0; i < MPIR_Comm_size(comm); i++) {
+            comm->dbg_rank_map[i] = MPIDIU_rank_to_lpid(i, comm);
+        }
+    }
+#endif
+
     mpi_errno = MPIDIG_init_comm(comm);
     MPIR_ERR_CHECK(mpi_errno);
 
