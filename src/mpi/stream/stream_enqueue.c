@@ -8,7 +8,7 @@
 /* Allow per-thread level disabling GPU path */
 MPL_TLS bool MPIR_disable_gpu = false;
 
-static int get_local_gpu_stream(MPIR_Comm * comm_ptr, MPL_gpu_stream_t * gpu_stream);
+int get_local_gpu_stream(MPIR_Comm * comm_ptr, MPL_gpu_stream_t * gpu_stream);
 static int allocate_enqueue_request(MPIR_Comm * comm_ptr, MPIR_Request ** req);
 
 /* send enqueue */
@@ -499,7 +499,7 @@ int MPIR_Waitall_enqueue_impl(int count, MPI_Request * array_of_requests,
 
 /* static utility */
 
-static int get_local_gpu_stream(MPIR_Comm * comm_ptr, MPL_gpu_stream_t * gpu_stream)
+int get_local_gpu_stream(MPIR_Comm * comm_ptr, MPL_gpu_stream_t * gpu_stream)
 {
     int mpi_errno = MPI_SUCCESS;
 
