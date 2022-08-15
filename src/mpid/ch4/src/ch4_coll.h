@@ -396,6 +396,10 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Allreduce_allcomm_composition_json(const void
     goto fn_exit;
 }
 
+int MPIDI_IPC_allreduce(const void *sendbuf, void *recvbuf, MPI_Aint count,
+                        MPI_Datatype datatype, MPI_Op op,
+                        MPIR_Comm * comm, MPIR_Errflag_t * errflag);
+
 MPL_STATIC_INLINE_PREFIX int MPID_Allreduce(const void *sendbuf, void *recvbuf, MPI_Aint count,
                                             MPI_Datatype datatype, MPI_Op op, MPIR_Comm * comm,
                                             MPIR_Errflag_t * errflag)
@@ -405,6 +409,18 @@ MPL_STATIC_INLINE_PREFIX int MPID_Allreduce(const void *sendbuf, void *recvbuf, 
     int num_leads = 0, node_comm_size = 0;
 
     MPIR_FUNC_ENTER;
+
+    /* check for GPU/IPC allreduce */
+    MPL_pointer_attr_t attr;
+    MPIR_GPU_query_pointer_attr(recvbuf, &attr);
+    int is_gpu = (attr.type == MPL_GPU_POINTER_DEV);
+    /* use fallback allreduce to avoid infinite recursion */
+    MPIR_Allreduce_impl(MPI_IN_PLACE, &is_gpu, 1, MPI_INT, MPI_LAND, comm, errflag);
+    if (is_gpu) {
+        /* gpu specific allreduce algo */
+        mpi_errno = MPIDI_IPC_allreduce(sendbuf, recvbuf, count, datatype, op, comm, errflag);
+        goto fn_exit;
+    }
 
     is_commutative = MPIR_Op_is_commutative(op);
 
