@@ -16,6 +16,7 @@ typedef struct {
     int initialized;
     MPL_gavl_tree_t ***ipc_handle_mapped_trees;
     MPL_gavl_tree_t **ipc_handle_track_trees;
+    bool use_ipc_coll;
 } MPIDI_GPUI_global_t;
 
 typedef struct {
