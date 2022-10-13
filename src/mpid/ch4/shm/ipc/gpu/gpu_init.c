@@ -159,6 +159,19 @@ int MPIDI_GPU_init_world(void)
     MPIDI_GPUI_global.local_device_count = device_count;
     MPL_gpu_free_hook_register(ipc_handle_free_hook);
 
+    /* detect single gpu-per-process for IPC collectives */
+    MPIDI_GPUI_global.use_ipc_coll = true;
+    MPIDU_Init_shm_put(&device_count, sizeof(int));
+    MPIDU_Init_shm_barrier();
+    for (int i = 0; i < MPIR_Process.local_size; i++) {
+        int tmp_count;
+        MPIDU_Init_shm_get(i, sizeof(int), &tmp_count);
+        if (tmp_count != 1) {
+            MPIDI_GPUI_global.use_ipc_coll = false;
+            break;
+        }
+    }
+
     MPIDI_GPUI_global.initialized = 1;
 
   fn_exit:
