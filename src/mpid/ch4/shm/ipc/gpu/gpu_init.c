@@ -171,6 +171,26 @@ int MPIDI_GPU_init_world(void)
             break;
         }
     }
+    MPIDU_Init_shm_barrier();
+
+    /* allocate and exchange collective IPC buffers */
+    if (MPIDI_GPUI_global.use_ipc_coll) {
+        void *ipc_buffer;
+        cudaIpcMemHandle_t handle;
+        cudaMalloc(&ipc_buffer, GPU_COLL_BUFFER_SIZE);
+        cudaIpcGetMemHandle(&handle, ipc_buffer);
+        MPIR_Assert(sizeof(handle) <= MPIDU_INIT_SHM_BLOCK_SIZE);
+        MPIDU_Init_shm_put(&handle, sizeof(handle));
+        MPIDU_Init_shm_barrier();
+        cudaIpcMemHandle_t neighbor_handle;
+        int neighbor = (MPIR_Process.rank + 1) % MPIR_Process.size;
+        MPIDU_Init_shm_get(neighbor, sizeof(neighbor_handle), &neighbor_handle);
+        void *neighbor_buffer;
+        cudaIpcOpenMemHandle(&neighbor_buffer, neighbor_handle, cudaIpcMemLazyEnablePeerAccess);
+        MPIDI_GPUI_global.ipc_buffers[0] = ipc_buffer;
+        MPIDI_GPUI_global.ipc_buffers[1] = neighbor_buffer;;
+        MPIDU_Init_shm_barrier();
+    }
 
     MPIDI_GPUI_global.initialized = 1;
 

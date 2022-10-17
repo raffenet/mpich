@@ -14,7 +14,7 @@ int MPIDI_SHM_mpi_comm_commit_pre_hook(MPIR_Comm * comm)
 
     MPIR_FUNC_ENTER;
 
-    ret = MPIDI_POSIX_mpi_comm_commit_pre_hook(comm);
+    ret = MPIDI_IPC_mpi_comm_commit_pre_hook(comm);
 
     MPIR_FUNC_EXIT;
     return ret;

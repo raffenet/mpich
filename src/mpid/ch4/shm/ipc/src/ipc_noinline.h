@@ -17,4 +17,7 @@ int MPIDI_IPC_mpi_finalize_hook(void);
 int MPIDI_IPC_mpi_win_create_hook(MPIR_Win * win);
 int MPIDI_IPC_mpi_win_free_hook(MPIR_Win * win);
 
+int MPIDI_IPC_mpi_comm_commit_pre_hook(MPIR_Comm * comm);
+int MPIDI_IPC_mpi_comm_free_hook(MPIR_Comm * comm);
+
 #endif /* IPC_NOINLINE_H_INCLUDED */

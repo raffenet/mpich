@@ -9,7 +9,8 @@ noinst_HEADERS += src/mpid/ch4/shm/ipc/gpu/gpu_pre.h       \
 mpi_core_sources += src/mpid/ch4/shm/ipc/gpu/gpu_post.c
 if BUILD_SHM_IPC_GPU
 mpi_core_sources += src/mpid/ch4/shm/ipc/gpu/globals.c     \
-                    src/mpid/ch4/shm/ipc/gpu/gpu_init.c
+                    src/mpid/ch4/shm/ipc/gpu/gpu_init.c    \
+                    src/mpid/ch4/shm/ipc/gpu/gpu_allgather.c
 
 noinst_HEADERS += src/mpid/ch4/shm/ipc/gpu/gpu_types.h
 else

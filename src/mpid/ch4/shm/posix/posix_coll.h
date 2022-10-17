@@ -230,7 +230,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_bcast(void *buffer, MPI_Aint count,
     goto fn_exit;
 }
 
-int MPIDI_IPC_allreduce(const void *sendbuf, void *recvbuf, MPI_Aint count,
+int MPIDI_GPU_allreduce(const void *sendbuf, void *recvbuf, MPI_Aint count,
                         MPI_Datatype datatype, MPI_Op op,
                         MPIR_Comm * comm, MPIR_Errflag_t * errflag);
 
@@ -253,7 +253,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_allreduce(const void *sendbuf, void
 
     MPIR_FUNC_ENTER;
 
-    /* check for GPU/IPC allreduce */
+    /* check for GPU allreduce */
     MPL_pointer_attr_t attr;
     MPIR_GPU_query_pointer_attr(recvbuf, &attr);
     int is_gpu = (attr.type == MPL_GPU_POINTER_DEV);
@@ -261,7 +261,8 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_allreduce(const void *sendbuf, void
     MPIR_Allreduce_impl(MPI_IN_PLACE, &is_gpu, 1, MPI_INT, MPI_LAND, comm, errflag);
     if (is_gpu) {
         /* gpu specific allreduce algo */
-        mpi_errno = MPIDI_IPC_allreduce(sendbuf, recvbuf, count, datatype, op, comm, errflag);
+        /* mpi_errno = MPIDI_GPU_allreduce(sendbuf, recvbuf, count, datatype, op, comm, errflag); */
+        abort();
         goto fn_exit;
     }
 
