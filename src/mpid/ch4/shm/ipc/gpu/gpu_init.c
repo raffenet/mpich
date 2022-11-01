@@ -183,12 +183,25 @@ int MPIDI_GPU_init_world(void)
         MPIDU_Init_shm_put(&handle, sizeof(handle));
         MPIDU_Init_shm_barrier();
         cudaIpcMemHandle_t neighbor_handle;
-        int neighbor = (MPIR_Process.rank + 1) % MPIR_Process.size;
-        MPIDU_Init_shm_get(neighbor, sizeof(neighbor_handle), &neighbor_handle);
+        int right_neighbor = (MPIR_Process.rank + 1) % MPIR_Process.size;
+        MPIDU_Init_shm_get(right_neighbor, sizeof(neighbor_handle), &neighbor_handle);
         void *neighbor_buffer;
         cudaIpcOpenMemHandle(&neighbor_buffer, neighbor_handle, cudaIpcMemLazyEnablePeerAccess);
         MPIDI_GPUI_global.ipc_buffers[0] = ipc_buffer;
-        MPIDI_GPUI_global.ipc_buffers[1] = neighbor_buffer;;
+        MPIDI_GPUI_global.ipc_buffers[1] = neighbor_buffer;
+
+        /* allocate shm for ipc flags, two cache lines per process */
+        void *ipc_flags;
+        bool mapfail_flag = false;
+        mpi_errno =
+            MPIDU_shm_alloc(MPIR_Process.comm_world, MPIDU_SHM_CACHE_LINE_LEN * MPIR_Process.local_size * 2,
+                            &ipc_flags, &mapfail_flag);
+        MPIDI_GPUI_global.data_avail = (MPL_atomic_int_t *) ((char *) ipc_flags + (MPIR_Process.rank * MPIDU_SHM_CACHE_LINE_LEN * 2));
+        MPIDI_GPUI_global.clear_to_send = (MPL_atomic_int_t *) ((char *) ipc_flags + (MPIR_Process.rank * MPIDU_SHM_CACHE_LINE_LEN * 2) + MPIDU_SHM_CACHE_LINE_LEN);
+        MPIDI_GPUI_global.neighb_data_avail = (MPL_atomic_int_t *) ((char *) ipc_flags + (right_neighbor * MPIDU_SHM_CACHE_LINE_LEN * 2));
+        int left_neighbor = MPIR_Process.rank == 0 ? MPIR_Process.size - 1 : MPIR_Process.rank - 1;
+        MPIDI_GPUI_global.neighb_clear_to_send = (MPL_atomic_int_t *) ((char *) ipc_flags + (left_neighbor * MPIDU_SHM_CACHE_LINE_LEN * 2) + MPIDU_SHM_CACHE_LINE_LEN);
+    
         MPIDU_Init_shm_barrier();
     }
 

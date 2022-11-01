@@ -49,40 +49,60 @@ int MPIDI_GPU_allgather(const void *sendbuf, MPI_Aint sendcount,
     j = rank;
     jnext = left;
     for (i = 1; i < size; i++) {
-        MPIC_Sendrecv(((char *) recvbuf +
-                       j * recvcount * recvtype_extent),
-                      recvcount, recvtype, right,
-                      MPIR_ALLGATHER_TAG,
-                      ((char *) recvbuf +
-                       jnext * recvcount * recvtype_extent),
-                      recvcount, recvtype, left,
-                      MPIR_ALLGATHER_TAG, comm, MPI_STATUS_IGNORE, errflag);
-        /* /\* send CTS to left neighbor, recv CTS from right neighbor *\/ */
-        /* start = MPI_Wtime(); */
-        /* MPIC_Sendrecv(NULL, 0, MPI_DATATYPE_NULL, left, MPIR_ALLGATHER_TAG, NULL, 0, MPI_DATATYPE_NULL, left, MPIR_ALLGATHER_TAG, comm, MPI_STATUS_IGNORE, errflag); */
-        /* stop = MPI_Wtime(); */
-        /* sendrecv += stop - start; */
+        /* MPIC_Sendrecv(((char *) recvbuf + */
+        /*                j * recvcount * recvtype_extent), */
+        /*               recvcount, recvtype, right, */
+        /*               MPIR_ALLGATHER_TAG, */
+        /*               ((char *) recvbuf + */
+        /*                jnext * recvcount * recvtype_extent), */
+        /*               recvcount, recvtype, left, */
+        /*               MPIR_ALLGATHER_TAG, comm, MPI_STATUS_IGNORE, errflag); */
+        /* send CTS to left neighbor, recv CTS from right neighbor */
+        //start = MPI_Wtime();
+        //MPIC_Sendrecv(NULL, 0, MPI_DATATYPE_NULL, left, MPIR_ALLGATHER_TAG, NULL, 0, MPI_DATATYPE_NULL, left, MPIR_ALLGATHER_TAG, comm, MPI_STATUS_IGNORE, errflag);
 
-        /* /\* send data to right neighbor *\/ */
-        /* MPI_Aint actual_pack_bytes; */
-        /* start = MPI_Wtime(); */
-        /* MPIR_Typerep_pack((char *) recvbuf + j * recvcount * recvtype_extent, recvcount, */
-        /*                    recvtype, 0, MPIDI_GPUI_global.ipc_buffers[1], pack_size, &actual_pack_bytes, MPIR_TYPEREP_FLAG_NONE); */
-        /* stop = MPI_Wtime(); */
-        /* packing += stop - start; */
+        /* reset flags */
+        MPL_atomic_store_int(MPIDI_GPUI_global.neighb_clear_to_send, 1);
+        MPL_atomic_store_int(MPIDI_GPUI_global.neighb_data_avail, 0);
+        
+        //stop = MPI_Wtime();
+        //sendrecv += stop - start;
 
-        /* /\* notify right neighbor data is available *\/ */
-        /* start = MPI_Wtime(); */
-        /* MPIC_Sendrecv(NULL, 0, MPI_DATATYPE_NULL, right, MPIR_ALLGATHER_TAG, NULL, 0, MPI_DATATYPE_NULL, left, MPIR_ALLGATHER_TAG, comm, MPI_STATUS_IGNORE, errflag); */
-        /* stop = MPI_Wtime(); */
-        /* sendrecv += stop - start; */
+        bool sent = false;
+        bool recvd = false;
+        do {
+            if (!sent && MPL_atomic_load_int(MPIDI_GPUI_global.clear_to_send)) {
+                /* send data to right neighbor */
+                MPI_Aint actual_pack_bytes;
+                //start = MPI_Wtime();
+                //printf("sending data to neighbor\n");
+                MPIR_Typerep_copy((char *) recvbuf + j * recvcount * recvtype_extent, MPIDI_GPUI_global.ipc_buffers[1], pack_size, MPIR_TYPEREP_FLAG_NONE);
+                //stop = MPI_Wtime();
+                //packing += stop - start;
 
-        /* /\* unpack from tmpbuf *\/ */
-        /* MPI_Aint actual_unpack_bytes; */
-        /* start = MPI_Wtime(); */
-        /* MPIR_Typerep_unpack(MPIDI_GPUI_global.ipc_buffers[0], pack_size, (char *) recvbuf + jnext * recvcount * recvtype_extent, recvcount, recvtype, 0, &actual_unpack_bytes, MPIR_TYPEREP_FLAG_NONE); */
-        /* stop = MPI_Wtime(); */
-        /* unpacking += stop - start; */
+                /* unset clear to send flag; TODO use single atomic */
+                MPL_atomic_store_int(MPIDI_GPUI_global.clear_to_send, 0);
+                /* set data arrived flag */
+                MPL_atomic_store_int(MPIDI_GPUI_global.neighb_data_avail, 1);
+                sent = true;
+            }
+
+            if (!recvd && MPL_atomic_load_int(MPIDI_GPUI_global.data_avail)) {
+                /* unpack from tmpbuf */
+                MPI_Aint actual_unpack_bytes;
+                //start = MPI_Wtime();
+                //printf("copying data from neighbor\n");
+                MPIR_Typerep_copy(MPIDI_GPUI_global.ipc_buffers[0], (char *) recvbuf + jnext * recvcount * recvtype_extent, pack_size, MPIR_TYPEREP_FLAG_NONE);
+                //stop = MPI_Wtime();
+                //unpacking += stop - start;
+
+                /* unset data avail; TODO use single atomic */
+                MPL_atomic_store_int(MPIDI_GPUI_global.data_avail, 0);
+                /* reset clear to send flag */
+                MPL_atomic_store_int(MPIDI_GPUI_global.neighb_clear_to_send, 1);
+                recvd = true;
+            }
+        } while (!sent || !recvd);
 
         /* update for next interation */
         j = jnext;

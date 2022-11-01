@@ -608,10 +608,13 @@ MPL_STATIC_INLINE_PREFIX int MPID_Allgather(const void *sendbuf, MPI_Aint sendco
         static bool first = true;
         /* gpu specific allreduce algo */
         if (first) {
-            printf("gpu allgather\n");
-            first = false;
+            printf("gpu allgather...\n");
         }
         mpi_errno = MPIDI_GPU_allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm, errflag);
+        if (first) {
+            printf("done\n");
+            first = false;
+        }
         goto fn_exit;
     }
 

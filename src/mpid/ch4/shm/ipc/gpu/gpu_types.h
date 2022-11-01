@@ -19,7 +19,11 @@ typedef struct {
     MPL_gavl_tree_t ***ipc_handle_mapped_trees;
     MPL_gavl_tree_t **ipc_handle_track_trees;
     bool use_ipc_coll;
-    void *ipc_buffers[2];
+    void *ipc_buffers[2]; // gpu ipc buffers
+    MPL_atomic_int_t *data_avail;
+    MPL_atomic_int_t *clear_to_send;
+    MPL_atomic_int_t *neighb_data_avail;
+    MPL_atomic_int_t *neighb_clear_to_send;
 } MPIDI_GPUI_global_t;
 
 typedef struct {
