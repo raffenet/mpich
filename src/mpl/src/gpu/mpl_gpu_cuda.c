@@ -261,6 +261,21 @@ int MPL_gpu_free(void *ptr)
     goto fn_exit;
 }
 
+int MPL_gpu_memcpy(void *dst, const void *src, size_t count)
+{
+    int mpl_err = MPL_SUCCESS;
+    cudaError_t ret;
+
+    ret = cudaMemcpy(dst, src, count, cudaMemcpyDefault);
+    CUDA_ERR_CHECK(ret);
+
+  fn_exit:
+    return mpl_err;
+  fn_fail:
+    mpl_err = MPL_ERR_GPU_INTERNAL;
+    goto fn_exit;
+}
+
 int MPL_gpu_init(int debug_summary)
 {
     int mpl_err = MPL_SUCCESS;
