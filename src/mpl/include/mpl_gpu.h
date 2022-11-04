@@ -68,6 +68,7 @@ int MPL_gpu_unregister_host(const void *ptr);
 
 int MPL_gpu_malloc(void **ptr, size_t size, MPL_gpu_device_handle_t h_device);
 int MPL_gpu_free(void *ptr);
+int MPL_gpu_memcpy(void *dst, const void *src, size_t count);
 
 int MPL_gpu_init(int debug_summary);
 int MPL_gpu_finalize(void);

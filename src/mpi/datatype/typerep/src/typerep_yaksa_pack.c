@@ -57,6 +57,8 @@ cvars:
     ((attr).type == MPL_GPU_POINTER_UNREGISTERED_HOST || \
     (attr).type == MPL_GPU_POINTER_REGISTERED_HOST)
 
+#define IS_DEVICE(attr) (attr).type == MPL_GPU_POINTER_DEV
+
 /* When a returned typerep_req is expected, using the nonblocking yaksa routine and
  * return the request; otherwise use the blocking yaksa routine. */
 static int typerep_do_copy(void *outbuf, const void *inbuf, MPI_Aint num_bytes,
@@ -155,21 +157,29 @@ static int typerep_do_pack(const void *inbuf, MPI_Aint incount, MPI_Datatype dat
     MPIR_GPU_query_pointer_attr(inbuf_ptr, &inattr);
     MPIR_GPU_query_pointer_attr(outbuf, &outattr);
 
-    if (is_contig && element_size > 0 && IS_HOST(inattr) && IS_HOST(outattr)) {
+    if (is_contig && element_size > 0) {
         MPI_Aint real_bytes = MPL_MIN(total_size - inoffset, max_pack_bytes);
         /* Make sure we never pack partial element */
         real_bytes -= real_bytes % element_size;
-        if (flags & MPIR_TYPEREP_FLAG_STREAM) {
-            MPIR_Memcpy_stream(outbuf, MPIR_get_contig_ptr(inbuf_ptr, inoffset), real_bytes);
-        } else {
-            MPIR_Memcpy(outbuf, MPIR_get_contig_ptr(inbuf_ptr, inoffset), real_bytes);
+
+        if (IS_HOST(inattr) && IS_HOST(outattr)) {
+            if (flags & MPIR_TYPEREP_FLAG_STREAM) {
+                MPIR_Memcpy_stream(outbuf, MPIR_get_contig_ptr(inbuf_ptr, inoffset), real_bytes);
+            } else {
+                MPIR_Memcpy(outbuf, MPIR_get_contig_ptr(inbuf_ptr, inoffset), real_bytes);
+            }
+        } else if (IS_DEVICE(inattr) && IS_DEVICE(outattr)) {
+            MPL_gpu_memcpy(outbuf, MPIR_get_contig_ptr(inbuf_ptr, inoffset), real_bytes);
         }
         *actual_pack_bytes = real_bytes;
         goto fn_exit;
     }
 
     yaksa_type_t type = MPII_Typerep_get_yaksa_type(datatype);
+    double start = MPI_Wtime();
     yaksa_info_t info = MPII_yaksa_get_info(&inattr, &outattr);
+    double stop = MPI_Wtime();
+    printf("info processing %f\n", stop - start);
 
     uintptr_t real_pack_bytes;
     if (typerep_req) {
@@ -299,11 +309,15 @@ static int typerep_do_unpack(const void *inbuf, MPI_Aint insize, void *outbuf, M
     MPIR_GPU_query_pointer_attr(inbuf, &inattr);
     MPIR_GPU_query_pointer_attr(outbuf_ptr, &outattr);
 
-    if (is_contig && IS_HOST(inattr) && IS_HOST(outattr)) {
+    if (is_contig) {
         *actual_unpack_bytes = MPL_MIN(total_size - outoffset, insize);
         /* We assume the amount we unpack is multiple of element_size */
         MPIR_Assert(element_size < 0 || *actual_unpack_bytes % element_size == 0);
-        MPIR_Memcpy(MPIR_get_contig_ptr(outbuf_ptr, outoffset), inbuf, *actual_unpack_bytes);
+        if (IS_HOST(inattr) && IS_HOST(outattr)) {
+            MPIR_Memcpy(MPIR_get_contig_ptr(outbuf_ptr, outoffset), inbuf, *actual_unpack_bytes);
+        } else if (IS_DEVICE(inattr) && IS_DEVICE(outattr)) {
+            MPL_gpu_memcpy(MPIR_get_contig_ptr(outbuf_ptr, outoffset), inbuf, *actual_unpack_bytes);
+        }
         goto fn_exit;
     }
 
