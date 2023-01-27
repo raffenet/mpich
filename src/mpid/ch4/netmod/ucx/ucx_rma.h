@@ -218,22 +218,45 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_do_put(const void *origin_addr,
         goto fn_exit;
     }
 
-    if (origin_contig && target_contig) {
+    if (target_contig) {
         int vni = MPIDI_WIN(win, am_vci);
         int vni_target = MPIDI_WIN_TARGET_VCI(win, target_rank);
+
+        ucp_request_param_t param = {
+            .op_attr_mask = UCP_OP_ATTR_FIELD_CALLBACK,
+            .cb.send = MPIDI_UCX_send_cmpl_cb,
+        };
+
+        const void *origin_buf;
+        size_t origin_count;
+        if (origin_contig) {
+            origin_buf = MPIR_get_contig_ptr(buf, dt_true_lb);
+            origin_count = data_sz;
+        } else {
+            origin_buf = buf;
+            origin_count = count;
+            param.op_attr_mask |= UCP_OP_ATTR_FIELD_DATATYPE;
+            param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
+            MPIR_Datatype_ptr_add_ref(dt_ptr);
+        }
+
+        ucp_ep_h ep = MPIDI_UCX_WIN_AV_TO_EP(addr, vni, vni_target);
+        MPIDI_UCX_win_info_t *win_info = &(MPIDI_UCX_WIN_INFO(win, target_rank));
+        uint64_t base = win_info->addr;
+        size_t offset = target_disp * win_info->disp + true_lb;
+
         MPIDI_UCX_THREAD_CS_ENTER_VCI(vni);
-        mpi_errno =
-            MPIDI_UCX_contig_put(MPIR_get_contig_ptr(origin_addr, origin_true_lb), origin_bytes,
-                                 target_rank, target_disp, target_true_lb, win, addr,
-                                 reqptr, vni, vni_target);
-        MPIDI_UCX_THREAD_CS_EXIT_VCI(vni);
-    } else if (target_contig) {
-        int vni = MPIDI_WIN(win, am_vci);
-        int vni_target = MPIDI_WIN_TARGET_VCI(win, target_rank);
-        MPIDI_UCX_THREAD_CS_ENTER_VCI(vni);
-        mpi_errno = MPIDI_UCX_noncontig_put(origin_addr, origin_count, origin_datatype, target_rank,
-                                            target_bytes, target_disp, target_true_lb, win, addr,
-                                            reqptr, vni, vni_target);
+        ucs_status_t status;
+        status = ucp_put_nbx(ep, origin_buf, origin_count, base + offset, win_info->rkey, &param);
+        if (status == UCS_INPROGRESS)
+            MPIDI_UCX_WIN(win).target_sync[target_rank].need_sync = MPIDI_UCX_WIN_SYNC_FLUSH_LOCAL;
+        else if (status == UCS_OK)
+            /* UCX 1.4 spec: completed immediately if returns UCS_OK.
+             * FIXME: is it local completion or remote ? Now we assume local,
+             * so we need flush to ensure remote completion.*/
+            MPIDI_UCX_WIN(win).target_sync[target_rank].need_sync = MPIDI_UCX_WIN_SYNC_FLUSH;
+        else
+            MPIDI_UCX_CHK_STATUS(status);
         MPIDI_UCX_THREAD_CS_EXIT_VCI(vni);
     } else {
         mpi_errno = MPIDIG_mpi_put(origin_addr, origin_count, origin_datatype, target_rank,
