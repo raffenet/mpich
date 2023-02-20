@@ -95,15 +95,19 @@ int MPIR_Typerep_flatten(MPIR_Datatype * datatype_ptr, void *flattened_type)
  * MPIR_Typerep_unflatten
  *
  * Parameters:
- * datatype_ptr   - (OUT) datatype into which the buffer will be unflattened
  * flattened_type - (IN)  buffer that contains the flattened representation
  */
-int MPIR_Typerep_unflatten(MPIR_Datatype * datatype_ptr, void *flattened_type)
+MPIR_Datatype *MPIR_Typerep_unflatten(void *flattened_type)
 {
     struct flatten_hdr *flatten_hdr = (struct flatten_hdr *) flattened_type;
     void *flattened_typerep = (void *) ((char *) flattened_type + sizeof(struct flatten_hdr));
     int mpi_errno = MPI_SUCCESS;
 
+    MPIR_Datatype *datatype_ptr = MPIR_Handle_obj_alloc(&MPIR_Datatype_mem);
+    if (datatype_ptr == NULL) {
+        return NULL;
+    }
+    MPIR_Object_set_ref(datatype_ptr, 1);
     datatype_ptr->is_committed = 1;
     datatype_ptr->attributes = 0;
     datatype_ptr->name[0] = 0;
@@ -133,8 +137,10 @@ int MPIR_Typerep_unflatten(MPIR_Datatype * datatype_ptr, void *flattened_type)
 #endif
 
   fn_exit:
-    return mpi_errno;
+    return datatype_ptr;
 
   fn_fail:
+    MPIR_Handle_obj_free(&MPIR_Datatype_mem, datatype_ptr);
+    datatype_ptr = NULL;
     goto fn_exit;
 }

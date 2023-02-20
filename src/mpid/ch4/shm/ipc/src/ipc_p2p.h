@@ -138,10 +138,9 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_IPCI_copy_data(MPIDI_IPC_hdr * ipc_hdr, MPIR_
         MPIR_Assert(actual_unpack_bytes == src_data_sz);
     } else {
         void *flattened_type = ipc_hdr + 1;
-        MPIR_Datatype *dt = (MPIR_Datatype *) MPIR_Handle_obj_alloc(&MPIR_Datatype_mem);
-        MPIR_Assert(dt);
-        mpi_errno = MPIR_Typerep_unflatten(dt, flattened_type);
-        MPIR_ERR_CHECK(mpi_errno);
+        MPIR_Datatype *dt = MPIR_Typerep_unflatten(flattened_type);
+        MPIR_ERR_CHKANDJUMP1(dt == NULL, mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s",
+                             "MPIR_Datatype");
 
         mpi_errno = MPIR_Localcopy(src_buf, ipc_hdr->count, dt->handle,
                                    MPIDIG_REQUEST(rreq, buffer),

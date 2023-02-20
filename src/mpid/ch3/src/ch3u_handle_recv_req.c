@@ -503,14 +503,8 @@ int MPIDI_CH3_ReqHandler_PutDerivedDTRecvComplete(MPIDI_VC_t * vc ATTRIBUTE((unu
     MPIR_FUNC_ENTER;
 
     /* get data from extended header */
-    new_dtp = (MPIR_Datatype *) MPIR_Handle_obj_alloc(&MPIR_Datatype_mem);
-    if (!new_dtp) {
-        MPIR_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s",
-                             "MPIR_Datatype_mem");
-    }
-    /* Note: handle is filled in by MPIR_Handle_obj_alloc() */
-    MPIR_Object_set_ref(new_dtp, 1);
-    MPIR_Typerep_unflatten(new_dtp, rreq->dev.flattened_type);
+    new_dtp = MPIR_Typerep_unflatten(rreq->dev.flattened_type);
+    MPIR_ERR_CHKANDJUMP1(new_dtp == NULL, mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPIR_Datatype");
 
     /* update request to get the data */
     MPIDI_Request_set_type(rreq, MPIDI_REQUEST_TYPE_PUT_RECV);
@@ -559,14 +553,8 @@ int MPIDI_CH3_ReqHandler_AccumMetadataRecvComplete(MPIDI_VC_t * vc ATTRIBUTE((un
     }
 
     if (MPIDI_Request_get_type(rreq) == MPIDI_REQUEST_TYPE_ACCUM_RECV_DERIVED_DT) {
-        new_dtp = (MPIR_Datatype *) MPIR_Handle_obj_alloc(&MPIR_Datatype_mem);
-        if (!new_dtp) {
-            MPIR_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s",
-                                 "MPIR_Datatype_mem");
-        }
-        /* Note: handle is filled in by MPIR_Handle_obj_alloc() */
-        MPIR_Object_set_ref(new_dtp, 1);
-        MPIR_Typerep_unflatten(new_dtp, rreq->dev.flattened_type);
+        new_dtp = MPIR_Typerep_unflatten(rreq->dev.flattened_type);
+        MPIR_ERR_CHKANDJUMP1(new_dtp == NULL, mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPIR_Datatype");
 
         /* update new request to get the data */
         MPIDI_Request_set_type(rreq, MPIDI_REQUEST_TYPE_ACCUM_RECV);
@@ -662,14 +650,8 @@ int MPIDI_CH3_ReqHandler_GaccumMetadataRecvComplete(MPIDI_VC_t * vc,
     }
 
     if (MPIDI_Request_get_type(rreq) == MPIDI_REQUEST_TYPE_GET_ACCUM_RECV_DERIVED_DT) {
-        new_dtp = (MPIR_Datatype *) MPIR_Handle_obj_alloc(&MPIR_Datatype_mem);
-        if (!new_dtp) {
-            MPIR_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s",
-                                 "MPIR_Datatype_mem");
-        }
-        /* Note: handle is filled in by MPIR_Handle_obj_alloc() */
-        MPIR_Object_set_ref(new_dtp, 1);
-        MPIR_Typerep_unflatten(new_dtp, rreq->dev.flattened_type);
+        new_dtp = MPIR_Typerep_unflatten(rreq->dev.flattened_type);
+        MPIR_ERR_CHKANDJUMP1(new_dtp == NULL, mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPIR_Datatype");
 
         /* update new request to get the data */
         MPIDI_Request_set_type(rreq, MPIDI_REQUEST_TYPE_GET_ACCUM_RECV);
@@ -763,14 +745,8 @@ int MPIDI_CH3_ReqHandler_GetDerivedDTRecvComplete(MPIDI_VC_t * vc,
     MPIR_Assert(!(rreq->dev.pkt_flags & MPIDI_CH3_PKT_FLAG_RMA_IMMED_RESP));
 
     /* get data from extended header */
-    new_dtp = (MPIR_Datatype *) MPIR_Handle_obj_alloc(&MPIR_Datatype_mem);
-    if (!new_dtp) {
-        MPIR_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s",
-                             "MPIR_Datatype_mem");
-    }
-    /* Note: handle is filled in by MPIR_Handle_obj_alloc() */
-    MPIR_Object_set_ref(new_dtp, 1);
-    MPIR_Typerep_unflatten(new_dtp, rreq->dev.flattened_type);
+    new_dtp = MPIR_Typerep_unflatten(rreq->dev.flattened_type);
+    MPIR_ERR_CHKANDJUMP1(new_dtp == NULL, mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPIR_Datatype");
 
     /* create request for sending data */
     sreq = MPIR_Request_create(MPIR_REQUEST_KIND__UNDEFINED);
