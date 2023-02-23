@@ -95,6 +95,4 @@ void MPL_gpu_event_init_count(MPL_gpu_event_t * var, int count);
 void MPL_gpu_event_complete(MPL_gpu_event_t * var);
 bool MPL_gpu_event_is_complete(MPL_gpu_event_t * var);
 
-void MPL_gpu_mem_get_info(size_t * free, size_t * total);
-
 #endif /* ifndef MPL_GPU_H_INCLUDED */
