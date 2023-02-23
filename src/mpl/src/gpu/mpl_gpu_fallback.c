@@ -147,3 +147,9 @@ bool MPL_gpu_event_is_complete(MPL_gpu_event_t * var)
 {
     return (*var) <= 0;
 }
+
+void MPL_gpu_mem_get_info(size_t * free, size_t * total)
+{
+    *total = SIZE_MAX;
+    *free = SIZE_MAX;
+}

@@ -482,3 +482,8 @@ bool MPL_gpu_stream_is_valid(MPL_gpu_stream_t stream)
     result = cudaStreamQuery(stream);
     return (result != cudaErrorInvalidResourceHandle);
 }
+
+void MPL_gpu_mem_get_info(size_t * free, size_t * total)
+{
+    cudaMemGetInfo(free, total);
+}

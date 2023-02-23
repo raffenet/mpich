@@ -15,7 +15,8 @@ mpi_core_sources +=   \
     src/util/mpir_netloc.c     \
     src/util/mpir_hwtopo.c     \
     src/util/mpir_nettopo.c    \
-    src/util/mpir_progress_hook.c
+    src/util/mpir_progress_hook.c \
+    src/util/mpir_gpu.c
 
 noinst_HEADERS +=   \
     src/util/mpir_nodemap.h

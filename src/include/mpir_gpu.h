@@ -7,6 +7,7 @@
 #define MPIR_GPU_H_INCLUDED
 
 #include "mpir_err.h"
+#include "uthash.h"
 
 /*
 === BEGIN_MPI_T_CVAR_INFO_BLOCK ===
@@ -95,18 +96,38 @@ MPL_STATIC_INLINE_PREFIX bool MPIR_GPU_query_pointer_is_dev(const void *ptr)
  * functions should be avoided at all critical paths. Use unregistered buffer
  * (MPL_malloc) instead. */
 
+struct MPIR_gpu_register_hash {
+    const void *ptr;
+    UT_hash_handle hh;
+};
+extern struct MPIR_gpu_register_hash *MPIR_gpu_register_hash;
+
 MPL_STATIC_INLINE_PREFIX int MPIR_gpu_register_host(const void *ptr, size_t size)
 {
-    if (ENABLE_GPU) {
-        return MPL_gpu_register_host(ptr, size);
+    if (1) {
+        size_t free, total;
+        MPL_gpu_mem_get_info(&free, &total);
+        if ((float) free / total > 0.95) {
+            struct MPIR_gpu_register_hash *hash =
+                MPL_malloc(sizeof(struct MPIR_gpu_register_hash), MPL_MEM_OTHER);
+            hash->ptr = ptr;
+            HASH_ADD_PTR(MPIR_gpu_register_hash, ptr, hash, MPL_MEM_OTHER);
+            return MPL_gpu_register_host(ptr, size);
+        }
     }
     return MPI_SUCCESS;
 }
 
 MPL_STATIC_INLINE_PREFIX int MPIR_gpu_unregister_host(const void *ptr)
 {
-    if (ENABLE_GPU) {
-        return MPL_gpu_unregister_host(ptr);
+    if (1) {
+        struct MPIR_gpu_register_hash *hash;
+        HASH_FIND_PTR(MPIR_gpu_register_hash, &ptr, hash);
+        if (hash) {
+            HASH_DEL(MPIR_gpu_register_hash, hash);
+            MPL_free(hash);
+            return MPL_gpu_unregister_host(ptr);
+        }
     }
     return MPI_SUCCESS;
 }

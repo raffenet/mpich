@@ -115,8 +115,16 @@ int MPIDU_genq_shmem_pool_create(uintptr_t cell_size, uintptr_t cells_per_proc,
     rc = MPIDU_Init_shm_alloc(slab_size, &pool_obj->slab);
     MPIR_ERR_CHECK(rc);
 
-    rc = MPIR_gpu_register_host(pool_obj->slab, slab_size);
-    MPIR_ERR_CHECK(rc);
+    /* register with the GPU if more than 95% of memory is free */
+    size_t free, total;
+    MPL_gpu_mem_get_info(&free, &total);
+    if ((float) free / total > 0.95) {
+        rc = MPIR_gpu_register_host(pool_obj->slab, slab_size);
+        MPIR_ERR_CHECK(rc);
+        pool_obj->gpu_registered = true;
+    } else {
+        pool_obj->gpu_registered = false;
+    }
 
     pool_obj->cell_header_base = (MPIDU_genqi_shmem_cell_header_s *) pool_obj->slab;
     pool_obj->free_queues =
@@ -142,6 +150,9 @@ int MPIDU_genq_shmem_pool_create(uintptr_t cell_size, uintptr_t cells_per_proc,
     MPIR_FUNC_EXIT;
     return rc;
   fn_fail:
+    if (pool_obj->gpu_registered) {
+        MPIR_gpu_unregister_host(pool_obj->slab);
+    }
     MPIDU_Init_shm_free(pool_obj->slab);
     MPL_free(pool_obj);
     goto fn_exit;
@@ -156,7 +167,9 @@ int MPIDU_genq_shmem_pool_destroy(MPIDU_genq_shmem_pool_t pool)
 
     MPL_free(pool_obj->cell_headers);
 
-    MPIR_gpu_unregister_host(pool_obj->slab);
+    if (pool_obj->gpu_registered) {
+        MPIR_gpu_unregister_host(pool_obj->slab);
+    }
     MPIDU_Init_shm_free(pool_obj->slab);
 
     /* free self */
