@@ -230,12 +230,24 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Bcast_allcomm_composition_json(void *buffer, 
     goto fn_exit;
 }
 
+int MPIDI_GPU_bcast(void *buffer, MPI_Aint count, MPI_Datatype datatype, int root, MPIR_Comm * comm, MPIR_Errflag_t errflag);
+
 MPL_STATIC_INLINE_PREFIX int MPID_Bcast(void *buffer, MPI_Aint count, MPI_Datatype datatype,
                                         int root, MPIR_Comm * comm, MPIR_Errflag_t errflag)
 {
     int mpi_errno = MPI_SUCCESS;
 
     MPIR_FUNC_ENTER;
+
+    /* check for GPU allgather */
+    MPL_pointer_attr_t attr;
+    MPIR_GPU_query_pointer_attr(buffer, &attr);
+    bool is_gpu = (attr.type == MPL_GPU_POINTER_DEV);
+    MPIR_Allreduce_impl(MPI_IN_PLACE, &is_gpu, 1, MPI_C_BOOL, MPI_LAND, comm, errflag);
+    if (is_gpu) {
+        mpi_errno = MPIDI_GPU_bcast(buffer, count, datatype, root, comm, errflag);
+        goto fn_exit;
+    }
 
     switch (MPIR_CVAR_BCAST_COMPOSITION) {
         case 1:
