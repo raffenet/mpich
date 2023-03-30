@@ -591,6 +591,11 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_Allgather_allcomm_composition_json(const void
     goto fn_exit;
 }
 
+int MPIDI_GPU_allgather(const void *sendbuf, MPI_Aint sendcount,
+                        MPI_Datatype sendtype, void *recvbuf,
+                        MPI_Aint recvcount, MPI_Datatype recvtype,
+                        MPIR_Comm * comm, MPIR_Errflag_t errflag);
+
 MPL_STATIC_INLINE_PREFIX int MPID_Allgather(const void *sendbuf, MPI_Aint sendcount,
                                             MPI_Datatype sendtype, void *recvbuf,
                                             MPI_Aint recvcount, MPI_Datatype recvtype,
@@ -600,6 +605,16 @@ MPL_STATIC_INLINE_PREFIX int MPID_Allgather(const void *sendbuf, MPI_Aint sendco
     MPI_Aint type_size;
 
     MPIR_FUNC_ENTER;
+
+    /* check for GPU allgather */
+    MPL_pointer_attr_t attr;
+    MPIR_GPU_query_pointer_attr(recvbuf, &attr);
+    bool is_gpu = (attr.type == MPL_GPU_POINTER_DEV);
+    MPIR_Allreduce_impl(MPI_IN_PLACE, &is_gpu, 1, MPI_C_BOOL, MPI_LAND, comm, errflag);
+    if (is_gpu) {
+        mpi_errno = MPIDI_GPU_allgather(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm, errflag);
+        goto fn_exit;
+    }
 
     if (sendbuf != MPI_IN_PLACE) {
         MPIR_Datatype_get_size_macro(sendtype, type_size);
