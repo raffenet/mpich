@@ -88,6 +88,13 @@ int MPL_gpu_launch_hostfn(MPL_gpu_stream_t stream, MPL_gpu_hostfn fn, void *data
 bool MPL_gpu_stream_is_valid(MPL_gpu_stream_t stream);
 void MPL_gpu_enqueue_trigger(MPL_gpu_event_t * var, MPL_gpu_stream_t stream);
 void MPL_gpu_enqueue_wait(MPL_gpu_event_t * var, MPL_gpu_stream_t stream);
+void MPL_gpu_send_fastbox(const void *sendbuf, void *fastbox, size_t len, MPL_gpu_stream_t stream);
+void MPL_gpu_recv_fastbox(const void *fastbox, void *recvbuf, size_t len, MPL_gpu_stream_t stream);
+void MPL_gpu_memcpy(void *dst, const void *src, size_t len, cudaStream_t stream);
+void MPL_gpu_wait_cts(volatile int *flag, cudaStream_t stream);
+void MPL_gpu_wait_data(volatile int *flag, cudaStream_t stream);
+void MPL_gpu_set_cts(volatile int *flag, cudaStream_t stream);
+void MPL_gpu_set_data(volatile int *flag, cudaStream_t stream);
 
 /* the synchronization event has the similar semantics as completion counter,
  * init to a count, then each completion decrement it by 1. */
