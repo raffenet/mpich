@@ -6,6 +6,7 @@
 #include "mpidimpl.h"
 #include "gpu_post.h"
 #include "gpu_types.h"
+#include "cuda_runtime_api.h"
 
 static void ipc_handle_cache_free(void *handle_obj)
 {
@@ -171,6 +172,38 @@ int MPIDI_GPU_init_world(void)
             break;
         }
     }
+    MPIDU_Init_shm_barrier();
+
+    /* allocate and exchange collective IPC buffers */
+    if (MPIDI_GPUI_global.use_ipc_coll) {
+        int left_neighbor = MPIR_Process.local_rank == 0 ? MPIR_Process.local_size - 1 : MPIR_Process.local_rank - 1;
+        int right_neighbor = (MPIR_Process.local_rank + 1) % MPIR_Process.local_size;
+        void *host_buffer;
+        void *device_buffer;
+        void *ipc_buffer;
+        cudaIpcMemHandle_t handle;
+        int device;
+
+        /* allocate buffer, share IPC handle */
+        cudaMalloc(&ipc_buffer, GPU_COLL_BUFFER_SIZE);
+        cudaGetDevice(&device);
+        cudaIpcGetMemHandle(&handle, ipc_buffer);
+        MPIR_Assert(sizeof(handle) <= MPIDU_INIT_SHM_BLOCK_SIZE);
+        MPIDU_Init_shm_put(&handle, sizeof(handle));
+        MPIDI_GPUI_global.ipc_buffers[0] = ipc_buffer;
+        MPIDU_Init_shm_barrier();
+
+        /* get IPC handle from neighbor and open it */
+        void *neighbor_buffer;
+        cudaIpcMemHandle_t neighbor_handle;
+        MPIDU_Init_shm_get(right_neighbor, sizeof(neighbor_handle), &neighbor_handle);
+        cudaIpcOpenMemHandle(&neighbor_buffer, neighbor_handle, cudaIpcMemLazyEnablePeerAccess);
+        MPIDI_GPUI_global.ipc_buffers[1] = neighbor_buffer;
+        MPIDU_Init_shm_barrier();
+
+        /* create a stream for IPC operations */
+        cudaStreamCreate(&MPIDI_GPUI_global.ipc_stream);
+    }
 
     MPIDI_GPUI_global.initialized = 1;
 
@@ -222,6 +255,13 @@ int MPIDI_GPU_mpi_finalize_hook(void)
         }
     }
     MPL_free(MPIDI_GPUI_global.ipc_handle_track_trees);
+
+    if (MPIDI_GPUI_global.use_ipc_coll) {
+        cudaIpcCloseMemHandle(MPIDI_GPUI_global.ipc_buffers[1]);
+        MPIDU_Init_shm_barrier();
+        cudaFree(MPIDI_GPUI_global.ipc_buffers[0]);
+        cudaStreamDestroy(MPIDI_GPUI_global.ipc_stream);
+    }
 
     MPIR_FUNC_EXIT;
     return mpi_errno;

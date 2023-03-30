@@ -8,6 +8,8 @@
 
 #include "uthash.h"
 
+#define GPU_COLL_BUFFER_SIZE 1024*1024*64
+
 typedef struct {
     int *local_ranks;
     int *local_procs;
@@ -17,6 +19,8 @@ typedef struct {
     MPL_gavl_tree_t ***ipc_handle_mapped_trees;
     MPL_gavl_tree_t **ipc_handle_track_trees;
     bool use_ipc_coll;
+    void *ipc_buffers[2]; // gpu ipc buffers
+    cudaStream_t ipc_stream;
 } MPIDI_GPUI_global_t;
 
 typedef struct {
