@@ -340,15 +340,6 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_sigreq_complete(MPIR_Request ** sigreq)
     }
 }
 
-MPL_STATIC_INLINE_PREFIX void MPIDI_OFI_load_iov(const void *buffer, int count,
-                                                 MPI_Datatype datatype, MPI_Aint max_len,
-                                                 MPI_Aint * loaded_iov_offset, struct iovec *iov)
-{
-    MPI_Aint outlen;
-    MPIR_Typerep_to_iov_offset(buffer, count, datatype, *loaded_iov_offset, iov, max_len, &outlen);
-    *loaded_iov_offset += outlen;
-}
-
 int MPIDI_OFI_issue_deferred_rma(MPIR_Win * win);
 void MPIDI_OFI_complete_chunks(MPIDI_OFI_win_request_t * winreq);
 int MPIDI_OFI_nopack_putget(const void *origin_addr, MPI_Aint origin_count,

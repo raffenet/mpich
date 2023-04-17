@@ -7,6 +7,15 @@
 #include "ofi_impl.h"
 #include "ofi_noinline.h"
 
+static void load_iov(const void *buffer, int count,
+                     MPI_Datatype datatype, MPI_Aint max_len,
+                     MPI_Aint * loaded_iov_offset, struct iovec *iov)
+{
+    MPI_Aint outlen;
+    MPIR_Typerep_to_iov_offset(buffer, count, datatype, *loaded_iov_offset, iov, max_len, &outlen);
+    *loaded_iov_offset += outlen;
+}
+
 static MPIDI_OFI_pack_chunk *create_chunk(void *pack_buffer, MPI_Aint unpack_size,
                                           MPI_Aint unpack_offset, MPIDI_OFI_win_request_t * winreq)
 {
@@ -112,11 +121,11 @@ int MPIDI_OFI_nopack_putget(const void *origin_addr, MPI_Aint origin_count,
         MPI_Aint origin_cur = i % origin_len;
         MPI_Aint target_cur = j % target_len;
         if (i == origin_iov_offset)
-            MPIDI_OFI_load_iov(origin_addr, origin_count, origin_datatype, origin_len,
-                               &origin_iov_offset, origin_iov);
+            load_iov(origin_addr, origin_count, origin_datatype, origin_len,
+                     &origin_iov_offset, origin_iov);
         if (j == target_iov_offset)
-            MPIDI_OFI_load_iov((const void *) (uintptr_t) target_mr.addr, target_count,
-                               target_datatype, target_len, &target_iov_offset, target_iov);
+            load_iov((const void *) (uintptr_t) target_mr.addr, target_count,
+                     target_datatype, target_len, &target_iov_offset, target_iov);
 
         msg_len = MPL_MIN(origin_iov[origin_cur].iov_len, target_iov[target_cur].iov_len);
 
@@ -197,12 +206,12 @@ static int issue_packed_put(MPIR_Win * win, MPIDI_OFI_win_request_t * req)
 
         MPI_Aint target_cur = j % req->noncontig.put.target.iov_len;
         if (j == req->noncontig.put.target.iov_offset)
-            MPIDI_OFI_load_iov(req->noncontig.put.target.base,
-                               req->noncontig.put.target.count,
-                               req->noncontig.put.target.datatype,
-                               req->noncontig.put.target.iov_len,
-                               &req->noncontig.put.target.iov_offset,
-                               req->noncontig.put.target.iov);
+            load_iov(req->noncontig.put.target.base,
+                     req->noncontig.put.target.count,
+                     req->noncontig.put.target.datatype,
+                     req->noncontig.put.target.iov_len,
+                     &req->noncontig.put.target.iov_offset,
+                     req->noncontig.put.target.iov);
 
         msg_len =
             MPL_MIN(MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE,
@@ -287,12 +296,12 @@ static int issue_packed_get(MPIR_Win * win, MPIDI_OFI_win_request_t * req)
 
         MPI_Aint target_cur = j % req->noncontig.get.target.iov_len;
         if (j == req->noncontig.get.target.iov_offset)
-            MPIDI_OFI_load_iov(req->noncontig.get.target.base,
-                               req->noncontig.get.target.count,
-                               req->noncontig.get.target.datatype,
-                               req->noncontig.get.target.iov_len,
-                               &req->noncontig.get.target.iov_offset,
-                               req->noncontig.get.target.iov);
+            load_iov(req->noncontig.get.target.base,
+                     req->noncontig.get.target.count,
+                     req->noncontig.get.target.datatype,
+                     req->noncontig.get.target.iov_len,
+                     &req->noncontig.get.target.iov_offset,
+                     req->noncontig.get.target.iov);
 
         msg_len =
             MPL_MIN(MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE,
