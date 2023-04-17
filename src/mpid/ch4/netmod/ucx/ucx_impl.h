@@ -129,4 +129,10 @@ MPL_STATIC_INLINE_PREFIX bool MPIDI_UCX_is_reachable_target(int rank, MPIR_Win *
 
 ucs_status_t MPIDI_UCX_am_handler(void *arg, void *data, size_t length, ucp_ep_h reply_ep,
                                   unsigned flags);
+
+int MPIDI_UCX_nopack_putget(const void *origin_addr, MPI_Aint origin_count,
+                            MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+                            MPI_Aint target_count, MPI_Datatype target_datatype,
+                            MPIR_Win * win,
+                            MPIDI_av_entry_t * addr, int rma_type, MPIR_Request ** sigreq);
 #endif /* UCX_IMPL_H_INCLUDED */

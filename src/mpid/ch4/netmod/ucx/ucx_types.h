@@ -21,6 +21,11 @@
 #define MPIDI_UCX_MAX_AM_EAGER_SZ      (16*1024)
 #define MPIDI_UCX_AM_HANDLER_ID        (0)
 
+enum {
+    MPIDI_UCX_PUT,
+    MPIDI_UCX_GET,
+};
+
 typedef struct {
     ucp_worker_h worker;
     ucp_address_t *if_address;
