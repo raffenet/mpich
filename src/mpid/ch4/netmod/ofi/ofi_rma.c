@@ -210,8 +210,7 @@ static int issue_packed_put(MPIR_Win * win, MPIDI_OFI_win_request_t * req)
                      req->noncontig.put.target.count,
                      req->noncontig.put.target.datatype,
                      req->noncontig.put.target.iov_len,
-                     &req->noncontig.put.target.iov_offset,
-                     req->noncontig.put.target.iov);
+                     &req->noncontig.put.target.iov_offset, req->noncontig.put.target.iov);
 
         msg_len =
             MPL_MIN(MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE,
@@ -300,8 +299,7 @@ static int issue_packed_get(MPIR_Win * win, MPIDI_OFI_win_request_t * req)
                      req->noncontig.get.target.count,
                      req->noncontig.get.target.datatype,
                      req->noncontig.get.target.iov_len,
-                     &req->noncontig.get.target.iov_offset,
-                     req->noncontig.get.target.iov);
+                     &req->noncontig.get.target.iov_offset, req->noncontig.get.target.iov);
 
         msg_len =
             MPL_MIN(MPIDI_OFI_DEFAULT_SHORT_SEND_SIZE,
