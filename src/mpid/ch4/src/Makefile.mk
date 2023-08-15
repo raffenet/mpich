@@ -36,7 +36,8 @@ noinst_HEADERS += src/mpid/ch4/src/ch4_comm.h     \
 		  src/mpid/ch4/src/mpidig_req_cache.h \
 		  src/mpid/ch4/src/mpidig_part.h \
 		  src/mpid/ch4/src/mpidig_part_callbacks.h \
-		  src/mpid/ch4/src/mpidig_part_utils.h
+		  src/mpid/ch4/src/mpidig_part_utils.h \
+		  src/mpid/ch4/src/mpidig_persist.h
 
 mpi_core_sources += src/mpid/ch4/src/ch4_globals.c        \
                     src/mpid/ch4/src/ch4_impl.c           \
@@ -59,6 +60,7 @@ mpi_core_sources += src/mpid/ch4/src/ch4_globals.c        \
 		    src/mpid/ch4/src/mpidig_part.c \
 		    src/mpid/ch4/src/mpidig_part_callbacks.c \
 		    src/mpid/ch4/src/mpidig_comm_abort.c \
+		    src/mpid/ch4/src/mpidig_persist.c \
                     src/mpid/ch4/src/mpid_ch4_net_array.c
 
 if BUILD_CH4_COLL_TUNING

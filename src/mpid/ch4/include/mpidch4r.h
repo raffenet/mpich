@@ -22,5 +22,6 @@
 #include "mpidig_send.h"
 #include "mpidig_part.h"
 #include "mpidig_part_callbacks.h"
+#include "mpidig_persist.h"
 
 #endif /* MPIDCH4R_H_INCLUDED */

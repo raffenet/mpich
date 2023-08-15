@@ -5,49 +5,6 @@
 
 #include "mpidimpl.h"
 
-/* Common internal routine for send_init family */
-static int psend_init(MPIDI_ptype ptype,
-                      const void *buf,
-                      MPI_Aint count,
-                      MPI_Datatype datatype,
-                      int rank, int tag, MPIR_Comm * comm, int attr, MPIR_Request ** request)
-{
-    int mpi_errno = MPI_SUCCESS;
-    MPIR_Request *sreq;
-
-    MPIR_FUNC_ENTER;
-
-    int context_offset = MPIR_PT2PT_ATTR_CONTEXT_OFFSET(attr);
-    int vci = MPIDI_get_vci(SRC_VCI_FROM_SENDER, comm, comm->rank, rank, tag);
-
-    MPID_THREAD_CS_ENTER(VCI, MPIDI_VCI(vci).lock);
-    MPIDI_CH4_REQUEST_CREATE(sreq, MPIR_REQUEST_KIND__PREQUEST_SEND, vci, 1);
-    MPID_THREAD_CS_EXIT(VCI, MPIDI_VCI(vci).lock);
-    MPIR_ERR_CHKANDSTMT(sreq == NULL, mpi_errno, MPIX_ERR_NOREQ, goto fn_fail, "**nomemreq");
-    *request = sreq;
-
-    MPIR_Comm_add_ref(comm);
-    sreq->comm = comm;
-
-    MPIDI_PREQUEST(sreq, p_type) = ptype;
-    MPIDI_PREQUEST(sreq, buffer) = (void *) buf;
-    MPIDI_PREQUEST(sreq, count) = count;
-    MPIDI_PREQUEST(sreq, datatype) = datatype;
-    MPIDI_PREQUEST(sreq, rank) = rank;
-    MPIDI_PREQUEST(sreq, tag) = tag;
-    MPIDI_PREQUEST(sreq, context_offset) = context_offset;
-    sreq->u.persist.real_request = NULL;
-    MPIR_cc_set(sreq->cc_ptr, 0);
-
-    MPIR_Datatype_add_ref_if_not_builtin(datatype);
-
-  fn_exit:
-    MPIR_FUNC_EXIT;
-    return mpi_errno;
-  fn_fail:
-    goto fn_exit;
-}
-
 int MPID_Send_init(const void *buf,
                    MPI_Aint count,
                    MPI_Datatype datatype,
@@ -57,7 +14,17 @@ int MPID_Send_init(const void *buf,
 
     MPIR_FUNC_ENTER;
 
-    mpi_errno = psend_init(MPIDI_PTYPE_SEND, buf, count, datatype, rank, tag, comm, attr, request);
+#ifdef MPIDI_CH4_DIRECT_NETMOD
+    mpi_errno = MPIDI_NM_mpi_send_init(buf, count, datatype, rank, tag, comm, attr, request);
+#else
+    MPIDI_av_entry_t *av = MPIDIU_comm_rank_to_av(comm, rank);
+    if (MPIDI_av_is_local(av))
+        mpi_errno = MPIDI_SHM_mpi_send_init(buf, count, datatype, rank, tag, comm, attr, request);
+    else
+        mpi_errno = MPIDI_NM_mpi_send_init(buf, count, datatype, rank, tag, comm, attr, request);
+    if (mpi_errno == MPI_SUCCESS)
+        MPIDI_REQUEST(*request, is_local) = MPIDI_av_is_local(av);
+#endif
     MPIR_ERR_CHECK(mpi_errno);
 
   fn_exit:
@@ -72,17 +39,7 @@ int MPID_Ssend_init(const void *buf,
                     MPI_Datatype datatype,
                     int rank, int tag, MPIR_Comm * comm, int attr, MPIR_Request ** request)
 {
-    int mpi_errno = MPI_SUCCESS;
-    MPIR_FUNC_ENTER;
-
-    mpi_errno = psend_init(MPIDI_PTYPE_SSEND, buf, count, datatype, rank, tag, comm, attr, request);
-    MPIR_ERR_CHECK(mpi_errno);
-
-  fn_exit:
-    MPIR_FUNC_EXIT;
-    return mpi_errno;
-  fn_fail:
-    goto fn_exit;
+    return MPIDIG_mpi_ssend_init(buf, count, datatype, rank, tag, comm, attr, request);
 }
 
 int MPID_Bsend_init(const void *buf,
@@ -90,17 +47,7 @@ int MPID_Bsend_init(const void *buf,
                     MPI_Datatype datatype,
                     int rank, int tag, MPIR_Comm * comm, int attr, MPIR_Request ** request)
 {
-    int mpi_errno = MPI_SUCCESS;
-    MPIR_FUNC_ENTER;
-
-    mpi_errno = psend_init(MPIDI_PTYPE_BSEND, buf, count, datatype, rank, tag, comm, attr, request);
-    MPIR_ERR_CHECK(mpi_errno);
-
-  fn_exit:
-    MPIR_FUNC_EXIT;
-    return mpi_errno;
-  fn_fail:
-    goto fn_exit;
+    return MPIDIG_mpi_bsend_init(buf, count, datatype, rank, tag, comm, attr, request);
 }
 
 int MPID_Rsend_init(const void *buf,
@@ -108,20 +55,7 @@ int MPID_Rsend_init(const void *buf,
                     MPI_Datatype datatype,
                     int rank, int tag, MPIR_Comm * comm, int attr, MPIR_Request ** request)
 {
-    int mpi_errno = MPI_SUCCESS;
-
-    MPIR_FUNC_ENTER;
-
-    /* TODO: Currently we don't distinguish SEND and RSEND */
-    mpi_errno = psend_init(MPIDI_PTYPE_SEND, buf, count, datatype, rank, tag, comm, attr, request);
-    MPIR_ERR_CHECK(mpi_errno);
-
-  fn_exit:
-    MPIR_FUNC_EXIT;
-    return mpi_errno;
-  fn_fail:
-    goto fn_exit;
-
+    return MPIDIG_mpi_rsend_init(buf, count, datatype, rank, tag, comm, attr, request);
 }
 
 int MPID_Recv_init(void *buf,

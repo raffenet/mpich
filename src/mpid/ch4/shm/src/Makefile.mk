@@ -26,7 +26,8 @@ mpi_core_sources   += src/mpid/ch4/shm/src/shm_init.c \
                       src/mpid/ch4/shm/src/shm_hooks.c \
                       src/mpid/ch4/shm/src/shm_mem.c \
                       src/mpid/ch4/shm/src/shm_rma.c \
-                      src/mpid/ch4/shm/src/shm_part.c
+                      src/mpid/ch4/shm/src/shm_part.c \
+                      src/mpid/ch4/shm/src/shm_persist.c
 
 noinst_HEADERS += src/mpid/ch4/shm/src/topotree_util.h \
                   src/mpid/ch4/shm/src/topotree_types.h\
