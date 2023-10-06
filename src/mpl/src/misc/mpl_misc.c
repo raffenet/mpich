@@ -65,10 +65,6 @@ int MPL_hex_encode(int size, const char *src, char *dest)
 /* decodes hex encoded string into original src data */
 int MPL_hex_decode(int size, const char *src, char *dest)
 {
-    int n = strlen(src);
-    if (n != size * 2) {
-        return 1;
-    }
 
     for (int i = 0; i < size; i++) {
         if (hex(src[0]) < 0 || hex(src[1]) < 0) {
