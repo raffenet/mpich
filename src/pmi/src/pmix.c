@@ -156,6 +156,11 @@ pmix_status_t PMIx_Abort(int status, const char msg[], pmix_proc_t procs[], size
     return PMIX_SUCCESS;
 }
 
+struct kvs_msg_hdr {
+    short type;
+    short len;
+};
+
 pmix_status_t PMIx_Put(pmix_scope_t scope, const char key[], pmix_value_t * val)
 {
     int pmi_errno = PMIX_SUCCESS;
@@ -173,10 +178,14 @@ pmix_status_t PMIx_Put(pmix_scope_t scope, const char key[], pmix_value_t * val)
     struct PMIU_cmd pmicmd;
     PMIU_cmd_init_zero(&pmicmd);
 
+    struct kvs_msg_hdr hdr;
+    hdr.type = val->type;
+
     if (val->type == PMIX_STRING) {
-        char *value = MPL_malloc(strlen(val->data.string) + 3, MPL_MEM_OTHER);
-        strcpy(value, "3,");
-        strcpy(value + 2, val->data.string);
+        hdr.len = strlen(val->data.string);
+        char *value = MPL_malloc(strlen(val->data.string) + sizeof(hdr) * 2, MPL_MEM_OTHER);
+        MPL_hex_encode(sizeof(hdr), &hdr, value);
+        strcpy(value + sizeof(hdr) * 2, val->data.string);
         PMIU_msg_set_query_kvsput(&pmicmd, USE_WIRE_VER, no_static, key, value);
 
         pmi_errno = PMIU_cmd_get_response(PMI_fd, &pmicmd);
@@ -184,17 +193,18 @@ pmix_status_t PMIx_Put(pmix_scope_t scope, const char key[], pmix_value_t * val)
 
         MPL_free(value);
     } else if (val->type == PMIX_BYTE_OBJECT) {
-        /* encode the binary value and prepend type */
-        char *encoded_value = MPL_malloc(val->data.bo.size * 2 + 4, MPL_MEM_OTHER);
-        strcpy(encoded_value, "27,");
-        MPL_hex_encode(val->data.bo.size, val->data.bo.bytes, encoded_value + 3);
+        /* TODO: support other types */
+        hdr.len = val->data.bo.size;
+        char *value = MPL_malloc(val->data.bo.size * 2 + sizeof(hdr) * 2 + 1, MPL_MEM_OTHER);
+        MPL_hex_encode(sizeof(hdr), &hdr, value);
+        MPL_hex_encode(val->data.bo.size, val->data.bo.bytes, value + sizeof(hdr) * 2);
 
-        PMIU_msg_set_query_kvsput(&pmicmd, USE_WIRE_VER, no_static, key, encoded_value);
+        PMIU_msg_set_query_kvsput(&pmicmd, USE_WIRE_VER, no_static, key, value);
 
         pmi_errno = PMIU_cmd_get_response(PMI_fd, &pmicmd);
         PMIU_ERR_POP(pmi_errno);
 
-        MPL_free(encoded_value);
+        MPL_free(value);
     }
 
   fn_exit:
@@ -313,23 +323,20 @@ pmix_status_t PMIx_Get(const pmix_proc_t * proc, const char key[],
     PMIU_ERR_POP(pmi_errno);
 
     if (found) {
-        char *s = MPL_strdup(tmp_val);
-        char *type = strtok(s, ",");
-        char *raw_value = strtok(NULL, ",");
+        struct kvs_msg_hdr hdr;
+        MPL_hex_decode(sizeof(hdr), tmp_val, &hdr);
 
         *val = MPL_direct_malloc(sizeof(pmix_value_t));
-        (*val)->type = atoi(type);
+        (*val)->type = hdr.type;
 
         if ((*val)->type == PMIX_STRING) {
-            (*val)->data.string = MPL_direct_strdup(raw_value);
+            (*val)->data.string = MPL_direct_strdup(tmp_val + sizeof(hdr) * 2);
         } else if ((*val)->type == PMIX_BYTE_OBJECT) {
-            int n = strlen(raw_value) / 2;
+            int n = hdr.len;
             (*val)->data.bo.bytes = MPL_direct_malloc(n);
             (*val)->data.bo.size = n;
-            MPL_hex_decode(n, raw_value, (*val)->data.bo.bytes);
+            MPL_hex_decode(n, tmp_val + sizeof(hdr) * 2, (*val)->data.bo.bytes);
         }
-
-        MPL_free(s);
     } else {
         pmi_errno = PMIX_ERR_NOT_FOUND;
     }
