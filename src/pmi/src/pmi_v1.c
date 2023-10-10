@@ -760,6 +760,14 @@ static int PMII_Set_from_port(int id)
     pmi_errno = PMIU_cmd_get_response(PMI_fd, &pmicmd);
     PMIU_ERR_POP(pmi_errno);
 
+    const char *spawner_jobid;
+    int appnum, verbose;        /* unused */
+    PMIU_msg_get_response_fullinit(&pmicmd, &PMI_rank, &PMI_size, &appnum, &spawner_jobid,
+                                   &verbose);
+    PMIU_ERR_POP(pmi_errno);
+
+    PMI_spawned = (spawner_jobid != NULL);
+
   fn_exit:
     PMIU_cmd_free_buf(&pmicmd);
     return pmi_errno;
@@ -1057,7 +1065,11 @@ static int getPMIFD(int *notset)
             id = atoi(p);
             /* PMII_Set_from_port sets up the values that are delivered
              * by environment variables when a separate port is not used */
-            PMII_Set_from_port(id);
+            int pmi_errno = PMII_Set_from_port(id);
+            if (pmi_errno) {
+                PMIU_printf(1, "PMI_PORT initialization failed\n");
+                return PMI_FAIL;
+            }
             *notset = 0;
         }
         return PMI_SUCCESS;
