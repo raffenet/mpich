@@ -145,7 +145,8 @@ static int parse_v1(char *buf, struct PMIU_cmd *pmicmd)
             unescape_val(val);
         }
 
-        if (strcmp(key, "cmd") == 0) {
+        /* do not overwrite the cmd if already set */
+        if (!pmicmd->cmd && strcmp(key, "cmd") == 0) {
             pmicmd->cmd = val;
         } else {
             PMIU_CMD_ADD_TOKEN(pmicmd, key, val);
@@ -980,12 +981,9 @@ int PMIU_cmd_get_response(int fd, struct PMIU_cmd *pmicmd)
 
     if (cmd_id == PMIU_CMD_FULLINIT && pmicmd->version == PMIU_WIRE_V1) {
         /* weird 3 additional set commands */
-        pmi_errno = GetResponse_set_int("size", &PMI_size);
-        PMIU_ERR_POP(pmi_errno);
-        pmi_errno = GetResponse_set_int("rank", &PMI_rank);
-        PMIU_ERR_POP(pmi_errno);
-        pmi_errno = GetResponse_set_int("debug", &PMIU_verbose);
-        PMIU_ERR_POP(pmi_errno);
+        PMIU_CMD_GET_INTVAL(pmicmd, "size", PMI_size);
+        PMIU_CMD_GET_INTVAL(pmicmd, "rank", PMI_rank);
+        PMIU_CMD_GET_INTVAL(pmicmd, "debug", PMIU_verbose);
     }
 
   fn_exit:
