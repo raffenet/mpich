@@ -27,6 +27,7 @@ static bool cached_singinit_inuse;
 static char *cached_singinit_key;
 
 static int getPMIFD(void);
+static const char *attribute_from_key(const char *key);
 
 pmix_status_t PMIx_Init(pmix_proc_t * proc, pmix_info_t info[], size_t ninfo)
 {
@@ -273,10 +274,10 @@ pmix_status_t PMIx_Get(const pmix_proc_t * proc, const char key[],
     struct PMIU_cmd pmicmd;
     PMIU_cmd_init_zero(&pmicmd);
 
-    /* handle special predefined keys */
-    if (!strcmp(key, "PMI_process_mapping") || !strcmp(key, "PMI_hwloc_xmlfile") ||
-        !strcmp(key, PMIX_UNIV_SIZE) || !strcmp(key, PMIX_ANL_MAP)) {
-        PMIU_msg_set_query_get(&pmicmd, USE_WIRE_VER, no_static, NULL, key);
+    /* handle predefined attributes */
+    const char *attr = attribute_from_key(key);
+    if (attr != NULL) {
+        PMIU_msg_set_query_get(&pmicmd, USE_WIRE_VER, no_static, NULL, attr);
 
         pmi_errno = PMIU_cmd_get_response(PMI_fd, &pmicmd);
 
@@ -560,6 +561,20 @@ static int getPMIFD(void)
     return pmi_errno;
   fn_fail:
     goto fn_exit;
+}
+
+/* convert predefined keys/attributes to the server format */
+static const char *attribute_from_key(const char *key)
+{
+    if (!strcmp(key, "PMI_hwloc_xmlfile")) {
+        return key;
+    } else if (!strcmp(key, PMIX_UNIV_SIZE)) {
+        return "universeSize";
+    } else if (!strcmp(key, PMIX_ANL_MAP)) {
+        return "PMI_process_mapping";
+    }
+
+    return NULL;
 }
 
 #endif /* DISABLE_PMIX */
