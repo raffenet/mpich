@@ -8,6 +8,25 @@
 
 #include "ucx_impl.h"
 
+/*
+=== BEGIN_MPI_T_CVAR_INFO_BLOCK ===
+
+cvars:
+    - name        : MPIR_CVAR_UCX_NONCONTIG_RECV
+      category    : CH4_UCX
+      type        : enum
+      default     : mpich_unpack
+      class       : none
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_ALL_EQ
+      description : |-
+        Variable to select method for receiving noncontiguous data
+        mpich_unpack                - MPICH unpacks the data at request completion
+        ucx_iov                     - MPICH gives an iov to UCX for receiving
+        ucx_unpack                  - UCX unpacks the data using generic datatype callbacks
+=== END_MPI_T_CVAR_INFO_BLOCK ===
+*/
+
 MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_recv_cmpl_cb(void *request, ucs_status_t status,
                                                      const ucp_tag_recv_info_t * info,
                                                      void *user_data)
@@ -30,6 +49,32 @@ MPL_STATIC_INLINE_PREFIX void MPIDI_UCX_recv_cmpl_cb(void *request, ucs_status_t
             rreq->status.MPI_SOURCE = MPIDI_UCX_get_source(info->sender_tag);
             rreq->status.MPI_TAG = MPIDI_UCX_get_tag(info->sender_tag);
             MPIR_STATUS_SET_COUNT(rreq->status, count);
+        }
+
+        switch (MPIR_CVAR_UCX_NONCONTIG_RECV) {
+            case MPIR_CVAR_UCX_NONCONTIG_RECV_mpich_unpack:
+                if (MPIDI_UCX_REQ(rreq).tmp_buf) {
+                    void *tmp_buf = MPIDI_UCX_REQ(rreq).tmp_buf;
+                    void *user_buf = MPIDI_UCX_REQ(rreq).user_buf;
+                    MPI_Aint user_count = MPIDI_UCX_REQ(rreq).user_count;
+                    MPI_Datatype datatype = MPIDI_UCX_REQ(rreq).datatype;
+                    MPI_Aint actual_unpack_bytes;
+
+                    MPIR_Typerep_unpack(tmp_buf, info->length, user_buf, user_count, datatype,
+                                        0, &actual_unpack_bytes, MPIR_TYPEREP_FLAG_NONE);
+                    if (actual_unpack_bytes < info->length) {
+                        rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
+                    }
+                    MPIR_Datatype_release_if_not_builtin(datatype);
+                    MPL_free(MPIDI_UCX_REQ(rreq).tmp_buf);
+                }
+                break;
+            case MPIR_CVAR_UCX_NONCONTIG_RECV_ucx_iov:
+                MPL_free(MPIDI_UCX_REQ(rreq).iov);
+                break;
+            case MPIR_CVAR_UCX_NONCONTIG_RECV_ucx_unpack:
+                /* nothing to do */
+                break;
         }
 #ifndef MPIDI_CH4_DIRECT_NETMOD
         int is_cancelled;
@@ -102,6 +147,8 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_recv(void *buf,
     } else {
         MPIR_Request_add_ref(req);
     }
+    MPIDI_UCX_REQ(req).tmp_buf = NULL;
+    MPIDI_UCX_REQ(req).iov = NULL;
 
     ucp_request_param_t param = {
         .op_attr_mask =
@@ -114,17 +161,45 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_UCX_recv(void *buf,
     ucp_tag = MPIDI_UCX_recv_tag(tag, rank, comm->recvcontext_id + context_offset);
     MPIDI_Datatype_get_info(count, datatype, dt_contig, data_sz, dt_ptr, dt_true_lb);
 
-    void *recv_buf;
-    size_t recv_count;
+    void *recv_buf = NULL;
+    size_t recv_count = 0;
     if (dt_contig) {
         recv_buf = MPIR_get_contig_ptr(buf, dt_true_lb);
         recv_count = data_sz;
     } else {
-        recv_buf = buf;
-        recv_count = count;
-        param.op_attr_mask |= UCP_OP_ATTR_FIELD_DATATYPE;
-        param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
-        MPIR_Datatype_ptr_add_ref(dt_ptr);
+        switch (MPIR_CVAR_UCX_NONCONTIG_RECV) {
+            case MPIR_CVAR_UCX_NONCONTIG_RECV_mpich_unpack:
+                MPIDI_UCX_REQ(req).datatype = datatype;
+                MPIR_Datatype_add_ref_if_not_builtin(datatype);
+                MPIDI_UCX_REQ(req).user_buf = buf;
+                MPIDI_UCX_REQ(req).user_count = count;
+                MPIDI_UCX_REQ(req).tmp_buf = MPL_malloc(data_sz, MPL_MEM_BUFFER);
+                recv_buf = MPIDI_UCX_REQ(req).tmp_buf;
+                recv_count = data_sz;
+                break;
+            case MPIR_CVAR_UCX_NONCONTIG_RECV_ucx_iov:
+                {
+                    MPI_Aint iov_len, actual_iov_len;
+                    MPIR_Typerep_get_iov_len(count, datatype, &iov_len);
+                    ucp_dt_iov_t *iov = MPL_malloc(sizeof(ucp_dt_iov_t) * iov_len, MPL_MEM_BUFFER);
+                    MPIR_Typerep_to_iov_offset(buf, count, datatype, 0, (struct iovec *) iov,
+                                               iov_len, &actual_iov_len);
+                    MPIR_Assert(iov_len == actual_iov_len);
+                    recv_buf = iov;
+                    recv_count = iov_len;
+                    param.op_attr_mask |= UCP_OP_ATTR_FIELD_DATATYPE;
+                    param.datatype = ucp_dt_make_iov();
+                    MPIDI_UCX_REQ(req).iov = iov;
+                    break;
+                }
+            case MPIR_CVAR_UCX_NONCONTIG_RECV_ucx_unpack:
+                recv_buf = buf;
+                recv_count = count;
+                param.op_attr_mask |= UCP_OP_ATTR_FIELD_DATATYPE;
+                param.datatype = dt_ptr->dev.netmod.ucx.ucp_datatype;
+                MPIR_Datatype_ptr_add_ref(dt_ptr);
+                break;
+        }
     }
 
     ucp_request =

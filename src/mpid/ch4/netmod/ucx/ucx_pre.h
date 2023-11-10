@@ -24,9 +24,14 @@ typedef struct {
     ucp_datatype_t ucp_datatype;
 } MPIDI_UCX_dt_t;
 
-typedef union {
+typedef struct {
     ucp_tag_message_h message_handler;
     MPIDI_UCX_ucp_request_t *ucp_request;
+    void *tmp_buf;
+    void *user_buf;
+    MPI_Aint user_count;
+    MPI_Datatype datatype;
+    ucp_dt_iov_t *iov;
 } MPIDI_UCX_request_t;
 
 typedef struct {
