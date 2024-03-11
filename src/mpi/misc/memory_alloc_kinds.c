@@ -6,6 +6,10 @@
 #include "mpiimpl.h"
 
 static const char *memory_alloc_kinds[3][5] = {
+    /* CUDA kinds */
+#ifdef MPL_HAVE_CUDA
+    {"cuda", "host", "device", "managed", NULL},
+#endif
     /* mpi 4.1 kinds */
     {"mpi", "alloc_mem", "win_allocate", "win_allocate_shared", NULL},
     {"system", NULL},
