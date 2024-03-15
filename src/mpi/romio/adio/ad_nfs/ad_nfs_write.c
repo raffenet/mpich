@@ -266,7 +266,7 @@ void ADIOI_NFS_WriteStrided(ADIO_File fd, const void *buf, MPI_Aint count,
 /* offset is in units of etype relative to the filetype. */
 
     ADIOI_Flatlist_node *flat_buf, *flat_file;
-    int i, j, k, err = -1, bwr_size, st_index = 0;
+    int i, j, k, bwr_size, st_index = 0;
     ADIO_Offset i_offset, sum, size_in_filetype;
     ADIO_Offset num, size, n_etypes_in_filetype;
     MPI_Count bufsize;
@@ -282,6 +282,7 @@ void ADIOI_NFS_WriteStrided(ADIO_File fd, const void *buf, MPI_Aint count,
     int st_n_filetypes, writebuf_len, write_sz;
     ADIO_Offset fwr_size = 0, new_fwr_size, st_fwr_size;
     int new_bwr_size, err_flag = 0, info_flag, max_bufsize;
+    ssize_t err = -1;
     static char myname[] = "ADIOI_NFS_WRITESTRIDED";
 
     ADIOI_Datatype_iscontig(datatype, &buftype_is_contig);
