@@ -101,7 +101,6 @@ static_mpi=no
 for arg in "$@" ; do
     # Set addarg to no if this arg should be ignored by the C compiler
     addarg=yes
-    qarg=$arg
     case $arg in 
  	# ----------------------------------------------------------------
 	# Compiler options that affect whether we are linking or no
@@ -185,23 +184,10 @@ for arg in "$@" ; do
     fi
     exit 0
     ;;
-        # -----------------------------------------------------------------
-	# Other arguments.  We are careful to handle arguments with 
-	# quotes (we try to quote all arguments in case they include 
-	# any spaces)
-    *\"*) 
-    qarg="'"$arg"'"
-    ;;
-    *\'*) 
-    qarg='\"'"$arg"'\"'
-    ;;
-    *)
-    qarg="'$arg'"
-    ;;
 
     esac
     if [ $addarg = yes ] ; then
-        allargs="$allargs $qarg"
+        allargs="$allargs $arg"
     fi
 done
 
@@ -257,18 +243,18 @@ fi
 # suppressing linking, such as -c or -M.
 if [ "$linking" = yes ] ; then
     if [ "$nativelinking" = yes ] ; then
-        $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} $allargs -I$includedir
+        $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} ${allargs} -I$includedir
         rc=$?
     else
         if [ "$static_mpi" = no ] ; then
-          $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} "${allargs[@]}" -I$includedir -L$libdir $PROFILE_PRELIB $PROFILE_FOO ${wrapper_dl_type_flags} -l@MPILIBNAME@ @LPMPILIBNAME@ $PROFILE_POSTLIB ${final_libs}
+          $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} ${allargs} -I$includedir -L$libdir $PROFILE_PRELIB $PROFILE_FOO ${wrapper_dl_type_flags} -l@MPILIBNAME@ @LPMPILIBNAME@ $PROFILE_POSTLIB ${final_libs}
         else
-          $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} "${allargs[@]}" -I$includedir -L$libdir $PROFILE_PRELIB $PROFILE_FOO ${wrapper_dl_type_flags} $libdir/lib@MPILIBNAME@.a @LPMPILIBNAME@ $PROFILE_POSTLIB ${final_libs}
+          $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} ${allargs} -I$includedir -L$libdir $PROFILE_PRELIB $PROFILE_FOO ${wrapper_dl_type_flags} $libdir/lib@MPILIBNAME@.a @LPMPILIBNAME@ $PROFILE_POSTLIB ${final_libs}
         fi
         rc=$?
     fi
 else
-    $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} $allargs -I$includedir
+    $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${allargs} -I$includedir
     rc=$?
 fi
 
