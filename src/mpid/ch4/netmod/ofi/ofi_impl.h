@@ -707,8 +707,12 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_register_memory(char *send_buf, size_t da
     mr_attr.context = NULL;
 #ifdef MPL_HAVE_CUDA
     mr_attr.iface = (attr->type != MPL_GPU_POINTER_DEV) ? FI_HMEM_SYSTEM : FI_HMEM_CUDA;
-    mr_attr.device.cuda =
-        (attr->type != MPL_GPU_POINTER_DEV) ? 0 : MPL_gpu_get_dev_id_from_attr(attr);
+    if (attr->type == MPL_GPU_POINTER_DEV) {
+        cuDevice dev_h;
+        int dev_id = MPL_gpu_get_dev_id_from_attr(attr);
+        cuDeviceGet(&dev_h, dev_id);
+        mr_attr.device.cuda = dev_h;
+    }
 #elif defined MPL_HAVE_ZE
     /* OFI does not support tiles yet, need to pass the root device. */
     mr_attr.iface = (attr->type != MPL_GPU_POINTER_DEV) ? FI_HMEM_SYSTEM : FI_HMEM_ZE;
