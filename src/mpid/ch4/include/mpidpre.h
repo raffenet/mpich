@@ -105,6 +105,11 @@ typedef struct MPIDIG_rreq_t {
     MPIR_Request *match_req;
 } MPIDIG_rreq_t;
 
+typedef struct MPIDIG_sreq_t {
+    MPIDI_IPCI_type_t ipc_type;
+    MPIDI_GPU_ipc_attr_t gpu_attr;
+} MPIDIG_sreq_t;
+
 typedef struct MPIDIG_part_am_req_t {
     MPIR_Request *part_req_ptr;
 } MPIDIG_part_am_req_t;
@@ -179,6 +184,7 @@ typedef struct MPIDIG_sreq_async {
 typedef struct MPIDIG_req_ext_t {
     union {
         MPIDIG_rreq_t rreq;
+        MPIDIG_sreq_t sreq;
         MPIDIG_put_req_t preq;
         MPIDIG_get_req_t greq;
         MPIDIG_cswap_req_t creq;
