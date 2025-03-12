@@ -315,6 +315,11 @@ int MPIDI_GPU_get_ipc_attr(const void *buf, MPI_Aint count, MPI_Datatype datatyp
 
     ipc_attr->ipc_type = MPIDI_IPCI_TYPE__NONE;
 
+    /* supporting data structures (e.g. handle caches) are not thread-safe */
+    if (MPIR_ThreadInfo.isThreaded) {
+        goto fn_exit;
+    }
+
     MPIR_Datatype *dt_ptr;
     bool dt_contig;
     MPI_Aint true_lb;

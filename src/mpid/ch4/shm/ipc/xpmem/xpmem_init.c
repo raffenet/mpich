@@ -25,7 +25,7 @@ int MPIDI_XPMEM_init_world(void)
         goto fn_exit;
     }
 
-    if (MPIR_Process.local_size == 1) {
+    if (MPIR_Process.local_size == 1 || MPIR_ThreadInfo.isThreaded) {
         goto fn_exit;
     }
 
