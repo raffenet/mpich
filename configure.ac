@@ -2892,6 +2892,8 @@ fi
 if test "$MPID_NO_FLOAT16" != "yes" ; then
     AC_CHECK_SIZEOF(_Float16)
     AC_CHECK_SIZEOF(__fp16)
+    # some toolchains can compile but not link __fp16
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[__fp16 a;]])],[],[ac_cv_sizeof___fp16=0])
     if test "$ac_cv_sizeof__Float16" -eq 2 ; then
         AC_DEFINE_UNQUOTED([MPIR_FLOAT16_CTYPE],[_Float16], [The C type for MPIR_FLOAT16])
         AC_CHECK_ALIGNOF(_Float16)
