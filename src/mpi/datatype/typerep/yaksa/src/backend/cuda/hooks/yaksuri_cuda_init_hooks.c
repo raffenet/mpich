@@ -170,6 +170,9 @@ int yaksuri_cuda_init_hook(yaksur_gpudriver_hooks_s ** hooks)
     cudaError_t cerr;
 
     cerr = cudaGetDeviceCount(&yaksuri_cudai_global.ndevices);
+    if (cerr == cudaErrorNoDevice) {
+        goto fn_exit;
+    }
     YAKSURI_CUDAI_CUDA_ERR_CHKANDJUMP(cerr, rc, fn_fail);
 
     if (getenv("CUDA_VISIBLE_DEVICES") == NULL) {
