@@ -79,8 +79,8 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_get_set_number(const char *set_name)
  * MPIDI_OFI_MAX_ENDPOINTS             Maximum number of endpoints (regular or scalable) to use
  * MPIDI_OFI_MAX_ENDPOINTS_BITS        Number of bits used by MPIDI_OFI_MAX_ENDPOINTS_BITS
  * MPIDI_OFI_ENABLE_SHARED_CONTEXTS    Uses FI_SHARED_CONTEXT
- * MPIDI_OFI_ENABLE_MR_VIRT_ADDRESS    Use FI_MR_VIRT_ADDR with FI_MR_BASIC
- * MPIDI_OFI_ENABLE_MR_PROV_KEY        Use FI_MR_PROV_KEY with FI_MR_BASIC
+ * MPIDI_OFI_ENABLE_MR_VIRT_ADDRESS    Use FI_MR_VIRT_ADDR
+ * MPIDI_OFI_ENABLE_MR_PROV_KEY        Use FI_MR_PROV_KEY
  * MPIDI_OFI_ENABLE_TAGGED             Use FI_TAGGED interface instead of FI_MSG
  * MPIDI_OFI_ENABLE_AM                 Use FI_MSG and FI_MULTI_RECV for active messages
  * MPIDI_OFI_ENABLE_RMA                Require FI_DELIVERY_COMPLETE and use the OFI RMA code path

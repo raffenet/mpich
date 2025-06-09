@@ -174,16 +174,12 @@ int MPIDI_OFI_init_hints(struct fi_info *hints)
         hints->domain_attr->mr_mode |= FI_MR_ENDPOINT;
 #endif
     } else {
-        /* In old versions FI_MR_BASIC is equivallent to set
-         * FI_MR_VIRT_ADDR, FI_MR_PROV_KEY, and FI_MR_ALLOCATED on.
-         * FI_MR_SCALABLE is equivallent to all bits off in newer versions.
-         */
         MPIR_Assert(MPIDI_OFI_ENABLE_MR_VIRT_ADDRESS == MPIDI_OFI_ENABLE_MR_PROV_KEY);
         MPIR_Assert(MPIDI_OFI_ENABLE_MR_VIRT_ADDRESS == MPIDI_OFI_ENABLE_MR_ALLOCATED);
         if (MPIDI_OFI_ENABLE_MR_VIRT_ADDRESS) {
-            hints->domain_attr->mr_mode = FI_MR_BASIC;
+            hints->domain_attr->mr_mode = FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
         } else {
-            hints->domain_attr->mr_mode = FI_MR_SCALABLE;
+            hints->domain_attr->mr_mode = 0;
         }
     }
     hints->tx_attr->op_flags = FI_COMPLETION;
@@ -215,7 +211,7 @@ int MPIDI_OFI_init_hints(struct fi_info *hints)
         }
     }
 
-    hints->tx_attr->comp_order = FI_ORDER_NONE;
+    hints->tx_attr->comp_order = 0;
     hints->rx_attr->op_flags = FI_COMPLETION;
     hints->rx_attr->total_buffered_recv = 0;    /* FI_RM_ENABLED ensures buffering of unexpected messages */
     hints->ep_attr->type = FI_EP_RDM;
@@ -374,16 +370,13 @@ void MPIDI_OFI_update_global_settings(struct fi_info *prov)
     UPDATE_SETTING_BY_INFO(enable_scalable_endpoints,
                            prov->domain_attr->max_ep_tx_ctx > 1 &&
                            (prov->caps & FI_NAMED_RX_CTX) == FI_NAMED_RX_CTX);
-    /* NOTE: As of OFI version 1.5, FI_MR_SCALABLE and FI_MR_BASIC are deprecated.
-     * FI_MR_BASIC is equivallent to FI_MR_VIRT_ADDR|FI_MR_ALLOCATED|FI_MR_PROV_KEY */
     UPDATE_SETTING_BY_INFO_DIRECT(enable_mr_virt_address,
-                                  prov->domain_attr->mr_mode & (FI_MR_VIRT_ADDR | FI_MR_BASIC));
+                                  prov->domain_attr->mr_mode & (FI_MR_VIRT_ADDR));
     UPDATE_SETTING_BY_INFO_DIRECT(enable_mr_prov_key,
-                                  prov->domain_attr->mr_mode & (FI_MR_PROV_KEY | FI_MR_BASIC));
+                                  prov->domain_attr->mr_mode & (FI_MR_PROV_KEY));
     UPDATE_SETTING_BY_INFO_DIRECT(enable_mr_allocated,
-                                  prov->domain_attr->mr_mode & (FI_MR_ALLOCATED | FI_MR_BASIC));
-    UPDATE_SETTING_BY_INFO_DIRECT(enable_data,
-                                  (prov->caps & FI_DIRECTED_RECV) &&
+                                  prov->domain_attr->mr_mode & (FI_MR_ALLOCATED));
+    UPDATE_SETTING_BY_INFO_DIRECT(enable_data, (prov->caps & FI_DIRECTED_RECV) &&
                                   prov->domain_attr->cq_data_size >= MPIDI_OFI_MIN_CQ_DATA_SIZE);
     UPDATE_SETTING_BY_INFO(enable_tagged, prov->caps & FI_TAGGED);
     UPDATE_SETTING_BY_INFO(enable_am,

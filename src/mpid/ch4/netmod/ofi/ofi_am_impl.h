@@ -287,7 +287,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_OFI_am_isend_long(int rank, MPIR_Comm * comm,
     MPIDI_OFI_global.per_vci[vci_src].am_inflight_rma_send_mrs += 1;
 
     if (MPIDI_OFI_ENABLE_MR_PROV_KEY) {
-        /* MR_BASIC */
         lmt_info->rma_key = fi_mr_key(MPIDI_OFI_AM_SREQ_HDR(sreq, lmt_mr));
     }
 

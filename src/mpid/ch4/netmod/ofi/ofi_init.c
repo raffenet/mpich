@@ -91,9 +91,7 @@ cvars:
       verbosity   : MPI_T_VERBOSITY_USER_BASIC
       scope       : MPI_T_SCOPE_LOCAL
       description : >-
-        If true, enable virtual addressing for OFI memory regions. This variable is only meaningful
-        for OFI versions 1.5+. It is equivalent to using FI_MR_BASIC in versions of
-        OFI older than 1.5.
+        If true, enable virtual addressing for OFI memory regions.
 
     - name        : MPIR_CVAR_CH4_OFI_ENABLE_MR_ALLOCATED
       category    : CH4_OFI
@@ -104,9 +102,7 @@ cvars:
       scope       : MPI_T_SCOPE_LOCAL
       description : >-
         If true, require all OFI memory regions must be backed by physical memory pages
-        at the time the registration call is made. This variable is only meaningful
-        for OFI versions 1.5+. It is equivalent to using FI_MR_BASIC in versions of
-        OFI older than 1.5.
+        at the time the registration call is made.
 
     - name        : MPIR_CVAR_CH4_OFI_ENABLE_MR_REGISTER_NULL
       category    : CH4_OFI
@@ -126,9 +122,7 @@ cvars:
       verbosity   : MPI_T_VERBOSITY_USER_BASIC
       scope       : MPI_T_SCOPE_LOCAL
       description : >-
-        If true, enable provider supplied key for OFI memory regions. This variable is only
-        meaningful for OFI versions 1.5+. It is equivalent to using FI_MR_BASIC in versions of OFI
-        older than 1.5.
+        If true, enable provider supplied key for OFI memory regions.
 
     - name        : MPIR_CVAR_CH4_OFI_ENABLE_TAGGED
       category    : CH4_OFI
