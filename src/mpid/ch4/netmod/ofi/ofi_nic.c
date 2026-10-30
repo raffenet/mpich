@@ -39,6 +39,18 @@ cvars:
         per-rank CUDA_VISIBLE_DEVICES should be constrained to device(s) that could
         effectively share the same NIC assignments; see mpiexec manual for GPU
         visibility options
+
+    - name        : MPIR_CVAR_CH4_OFI_ENABLE_NIC_SORT
+      category    : CH4_OFI
+      type        : boolean
+      default     : true
+      class       : none
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_ALL_EQ
+      description : >-
+        Controls whether discovered NICs are sorted alphabetically, ordered by
+        CPU/GPU locality, and rotated across node-local ranks. When false, NICs
+        are used in the exact order returned by fi_getinfo().
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 
@@ -164,8 +176,11 @@ int MPIDI_OFI_fill_prov_use(struct fi_info *prov)
         MPIDI_OFI_global.num_nics_available = nic_count;
 
         /* nic_count >= 1 */
-        /* Initially sort the NICs by name. This way all intranode ranks have a consistent view. */
-        qsort(MPIDI_OFI_global.prov_use, nic_count, sizeof(struct fi_info *), compare_nic_names);
+        if (MPIR_CVAR_CH4_OFI_ENABLE_NIC_SORT) {
+            /* Initially sort the NICs by name. This way all intranode ranks have a consistent view. */
+            qsort(MPIDI_OFI_global.prov_use, nic_count, sizeof(struct fi_info *),
+                  compare_nic_names);
+        }
 
         int num_nics = 1;
         if (MPIR_CVAR_CH4_OFI_MAX_NICS == -1) {
@@ -186,8 +201,12 @@ int MPIDI_OFI_fill_prov_use(struct fi_info *prov)
             MPIDI_OFI_global.nic_info[i].close = 0;
         }
 
-        if (MPIR_CVAR_CH4_OFI_PREF_NIC > -1 &&
-            MPIR_CVAR_CH4_OFI_PREF_NIC < MPIDI_OFI_global.num_nics_available) {
+        if (!MPIR_CVAR_CH4_OFI_ENABLE_NIC_SORT) {
+            for (int i = 0; i < MPIDI_OFI_global.num_nics_available; i++) {
+                MPIDI_OFI_global.nic_info[i].close = 1;
+            }
+        } else if (MPIR_CVAR_CH4_OFI_PREF_NIC > -1 &&
+                   MPIR_CVAR_CH4_OFI_PREF_NIC < MPIDI_OFI_global.num_nics_available) {
             /* set the pref_nic's close to 1, all other nics' close to 0 */
             MPIDI_OFI_global.nic_info[MPIR_CVAR_CH4_OFI_PREF_NIC].close = 1;
         } else {
@@ -255,6 +274,10 @@ int MPIDI_OFI_fill_prov_use(struct fi_info *prov)
 
 int MPIDI_OFI_order_multi_nic_local(void)
 {
+    if (!MPIR_CVAR_CH4_OFI_ENABLE_NIC_SORT) {
+        return MPI_SUCCESS;
+    }
+
     /* TODO: pass comm and use comm->local_rank */
     int pref = MPIR_Process.local_rank % MPIDI_OFI_global.num_close_nics;
 
@@ -342,6 +365,10 @@ static int compute_nic_pref_global(MPIR_Comm * node_comm)
 
 int MPIDI_OFI_order_multi_nic_global(MPIR_Comm * node_comm)
 {
+    if (!MPIR_CVAR_CH4_OFI_ENABLE_NIC_SORT) {
+        return MPI_SUCCESS;
+    }
+
     int pref = compute_nic_pref_global(node_comm);
 
     if (MPIDI_OFI_global.fabric_initialized) {
