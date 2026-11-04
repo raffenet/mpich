@@ -187,6 +187,8 @@ M*/
             MPIR_Assert(err_ == 0);                                     \
             MPL_DBG_MSG_P(MPIR_DBG_THREAD,VERBOSE,"exit MPIDUI_THREAD_CS_YIELD %p", &mutex); \
             MPIR_Assert(err_ == 0);                                     \
+        } else {                                                        \
+            MPIDU_Thread_yield();                                       \
         }                                                               \
     } while (0)
 
