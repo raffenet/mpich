@@ -457,6 +457,16 @@ int MPID_InitCompleted(void)
     mpi_errno = MPIR_nodeid_init();
     MPIR_ERR_CHECK(mpi_errno);
 
+    if (MPIR_CVAR_CH4_PROGRESS_YIELD_WHEN_IDLE != 0) {
+        int num_pus = MPIR_hwtopo_get_num_pus();
+        bool oversubscribed = (num_pus > 0 && MPIR_Process.local_size > num_pus);
+        if (MPIR_CVAR_CH4_PROGRESS_YIELD_WHEN_IDLE > 0 || oversubscribed) {
+            /* Yield on idle MPIDI_progress_test polls when oversubscribed. */
+            MPIR_CVAR_CH4_PROGRESS_THROTTLE = 1;
+            MPIR_CVAR_CH4_PROGRESS_THROTTLE_NO_PROGRESS_COUNT = 0;
+        }
+    }
+
     if (MPIR_Process.has_parent) {
         MPIR_Assert(MPID_MAX_PORT_NAME >= MPI_MAX_PORT_NAME);
         char parent_port[MPID_MAX_PORT_NAME];

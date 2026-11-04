@@ -37,7 +37,7 @@ cvars:
         When running high PPN (high number of processes on a single node), keep polling progress may monopolize
         the underlying atomic queue and preventing packets being enqueued. A work around is to hold back progress
         polling. Setting MPIR_CVAR_CH4_PROGRESS_THROTTLE=true will throttle the progress polling by injecting
-        usleep(1) every once a while.
+        MPID_Thread_yield() every once a while.
 
     - name        : MPIR_CVAR_CH4_PROGRESS_THROTTLE_NO_PROGRESS_COUNT
       category    : CH4
@@ -48,8 +48,21 @@ cvars:
       scope       : MPI_T_SCOPE_LOCAL
       description : >-
         When MPIR_CVAR_CH4_PROGRESS_THROTTLE=true, MPIR_CVAR_CH4_PROGRESS_THROTTLE_NO_PROGRESS_COUNT is the number
-        of consecutive polls that must fail to make progress before calling usleep(1) in the progress. A higher value
-        makes the usleep less frequent, and a lower value makes the usleep more frequent.
+        of consecutive polls that must fail to make progress before calling MPID_Thread_yield() in the progress.
+        A higher value makes yielding less frequent, and a lower value makes yielding more frequent.
+
+    - name        : MPIR_CVAR_CH4_PROGRESS_YIELD_WHEN_IDLE
+      category    : CH4
+      type        : int
+      default     : -1
+      class       : none
+      verbosity   : MPI_T_VERBOSITY_USER_BASIC
+      scope       : MPI_T_SCOPE_LOCAL
+      description : >-
+        Yield the processor (via MPID_Thread_yield) whenever a progress poll makes no progress:
+        -1 - Auto-enable when the local node is oversubscribed (MPIR_Process.local_size > num_pus)
+         0 - Disabled (default busy-polling unless MPIR_CVAR_CH4_PROGRESS_THROTTLE is set)
+         1 - Always yield on idle progress polls
 === END_MPI_T_CVAR_INFO_BLOCK ===
 */
 
@@ -191,7 +204,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_progress_test(MPID_Progress_state * state)
     if (MPIR_CVAR_CH4_PROGRESS_THROTTLE) {
         if (made_progress) {
             no_progress_counter = 0;
-        } else if (no_progress_counter > MPIR_CVAR_CH4_PROGRESS_THROTTLE_NO_PROGRESS_COUNT) {
+        } else if (no_progress_counter >= MPIR_CVAR_CH4_PROGRESS_THROTTLE_NO_PROGRESS_COUNT) {
             MPID_Thread_yield();
         } else {
             no_progress_counter++;
