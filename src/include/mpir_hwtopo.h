@@ -156,6 +156,11 @@ MPIR_hwtopo_gid_t MPIR_hwtopo_get_dev_parent_by_pci(int domain, int bus, int dev
 int MPIR_hwtopo_get_num_numa_nodes(void);
 
 /*
+ * Return the number of processing units (hwthreads) on the node, or 0 if unavailable.
+ */
+int MPIR_hwtopo_get_num_pus(void);
+
+/*
  * Return the global id of the group ancestor of the first bound PU.
  * This function is used for nic binding in SPR SNC4 mode
  */

@@ -700,6 +700,16 @@ int MPIR_hwtopo_get_num_numa_nodes(void)
     return num_numa_nodes;
 }
 
+int MPIR_hwtopo_get_num_pus(void)
+{
+    int num_pus = 0;
+#ifdef HAVE_HWLOC
+    if (bindset_is_valid)
+        num_pus = hwloc_get_nbobjs_by_type(hwloc_topology, HWLOC_OBJ_PU);
+#endif
+    return num_pus;
+}
+
 MPIR_hwtopo_gid_t MPIR_hwtopo_get_first_pu_group(void)
 {
     MPIR_hwtopo_gid_t gid = MPIR_HWTOPO_GID_ROOT;
