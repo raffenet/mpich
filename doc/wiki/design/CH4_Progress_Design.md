@@ -60,7 +60,9 @@ typedef struct {
 `MPIDI_PROGRESS_NM_LOCKLESS` under `MPIDI_CH4_MT_LOCKLESS`) and lists every
 implicit VCI, `0 .. n_vcis - 1`. `MPIDI_set_progress_vci` lists the VCI of
 one request; `MPIDI_set_progress_vci_n` the distinct VCIs of the active,
-incomplete requests in an array.
+incomplete requests in an array. When `!MPIDI_CH4_DIRECT_NETMOD` and every
+waited request is local (`is_local`) with no `anysrc_partner`, they clear
+`MPIDI_PROGRESS_NM` so per-VCI polls only check shared memory.
 
 ## `MPIDI_progress_test`
 
@@ -80,8 +82,10 @@ One call goes through these steps, in order:
    - For each VCI, `MPIDI_PROGRESS(vci, is_global)` polls `MPIDI_SHM_progress`
      under the VCI lock, then `MPIDI_NM_progress` (under the VCI lock unless
      the VCI is explicit or the MT model is lockless). Outside global
-     progress, a part is skipped once something made progress in this
-     call, so the netmod is not polled when shm made progress.
+     progress, only the parts enabled in `state->flag` are polled and a part is
+     skipped once something made progress in this call, so the netmod is not
+     polled when shm made progress or when `MPIDI_PROGRESS_NM` is cleared; in
+     global progress (`is_global`), both shm and the netmod are polled.
 5. **Throttle** (`MPIR_CVAR_CH4_PROGRESS_THROTTLE`): after
    `MPIR_CVAR_CH4_PROGRESS_THROTTLE_NO_PROGRESS_COUNT` consecutive calls
    without progress, yield the thread (`MPID_Thread_yield`) on each further
@@ -145,9 +149,10 @@ so often, a call does *global progress*: it polls every implicit VCI
 | `low` | `0xfffffff` | every 2^28 calls (minutes) |
 | `high` | `0x1` | every other call |
 
-There is no global progress with a single implicit VCI (`n_vcis == 1`), or
-when `state` holds a single explicit VCI. In global progress every VCI is
-polled even after another one made progress (`is_global`).
+There is no global progress with a single implicit VCI (`n_vcis == 1`) when
+`MPIDI_PROGRESS_NM` is already set in `state`, or when `state` holds a single
+explicit VCI. In global progress every implicit VCI is polled, including both
+shm and the netmod, even after another part or VCI made progress (`is_global`).
 
 ### Progress inside a VCI lock
 
@@ -164,11 +169,10 @@ global progress takes every VCI lock in turn.
 ### Locks and thread granularity
 
 - With `--enable-thread-cs=global`, one global lock covers every MPI call,
-  and `MPID_Progress_wait` yields it (`MPIDI_PROGRESS_YIELD`) so other
+  and `MPID_Progress_wait` yields it (`MPID_THREAD_CS_YIELD`) so other
   threads can enter.
 - With `--enable-thread-cs=per-vci` (`MPICH_THREAD_GRANULARITY__VCI`), each
-  part is polled under its VCI lock as above, and `MPID_Progress_wait`
-  yields the thread.
+  part is polled under its VCI lock as above.
 - The MT model (`MPIDI_CH4_MT_MODEL`: `direct` or `lockless`, see
   `mpidpre.h`) decides whether netmod progress takes the VCI lock.
 - Progress hooks have their own locks; async things poll and add without
