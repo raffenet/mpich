@@ -95,9 +95,9 @@ MPIDI_POSIX_eager_send(int grank, MPIDI_POSIX_am_header_t * msg_hdr, const void 
         cell->type = MPIDI_POSIX_EAGER_IQUEUE_CELL_TYPE_HDR;
         /* send am_hdr if this is the first segment */
         if (is_topo_local) {
-            MPIR_Typerep_copy(payload, am_hdr, am_hdr_sz, MPIR_TYPEREP_FLAG_NONE);
+            MPIR_Memcpy(payload, am_hdr, am_hdr_sz);
         } else {
-            MPIR_Typerep_copy(payload, am_hdr, am_hdr_sz, MPIR_TYPEREP_FLAG_STREAM);
+            MPIR_Memcpy_stream(payload, am_hdr, am_hdr_sz);
         }
         /* make sure the data region starts at the boundary of MAX_ALIGNMENT */
         payload = payload + resized_am_hdr_sz;
@@ -114,7 +114,23 @@ MPIDI_POSIX_eager_send(int grank, MPIDI_POSIX_am_header_t * msg_hdr, const void 
      * not reliable because the derived datatype could have zero block size which contains no
      * data. */
     if (bytes_sent) {
-        if (is_topo_local) {
+        if (HANDLE_IS_BUILTIN(datatype) && !MPIR_GPU_query_pointer_is_dev(buf)) {
+            MPI_Aint elem_sz = MPIR_Datatype_get_basic_size(datatype);
+            MPI_Aint rem = count * elem_sz - offset;
+            if (likely(rem <= available)) {
+                packed_size = rem;
+            } else {
+                packed_size = available;
+                if (elem_sz > 1) {
+                    packed_size -= packed_size % elem_sz;
+                }
+            }
+            if (is_topo_local) {
+                MPIR_Memcpy(payload, (const char *) buf + offset, packed_size);
+            } else {
+                MPIR_Memcpy_stream(payload, (const char *) buf + offset, packed_size);
+            }
+        } else if (is_topo_local) {
             MPIR_Typerep_pack(buf, count, datatype, offset, payload, available, &packed_size,
                               MPIR_TYPEREP_FLAG_NONE);
         } else {

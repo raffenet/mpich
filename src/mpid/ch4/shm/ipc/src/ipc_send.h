@@ -15,6 +15,7 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_IPCI_try_lmt_isend(const void *buf, MPI_Aint 
                                                       MPI_Datatype datatype, int rank, int tag,
                                                       MPIR_Comm * comm, int attr,
                                                       MPIDI_av_entry_t * addr,
+                                                      int vci_src, int vci_dst,
                                                       MPIR_Request ** request, bool * done)
 {
     int mpi_errno = MPI_SUCCESS;
@@ -22,9 +23,6 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_IPCI_try_lmt_isend(const void *buf, MPI_Aint 
 
     int context_offset = MPIR_PT2PT_ATTR_CONTEXT_OFFSET(attr);
     int coll_attr = MPIR_PT2PT_ATTR_GET_ERRFLAG(attr);
-    int vci_src, vci_dst;
-    /* note: MPIDI_POSIX_SEND_VSIS defined in posix_send.h */
-    MPIDI_POSIX_SEND_VSIS(vci_src, vci_dst);
 
     MPIDI_POSIX_THREAD_CS_ENTER_VCI(vci_src);
 
@@ -65,14 +63,18 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_IPC_mpi_isend(const void *buf, MPI_Aint count
     int mpi_errno = MPI_SUCCESS;
     MPIR_FUNC_ENTER;
 
+    int vci_src, vci_dst;
+    /* note: MPIDI_POSIX_SEND_VSIS defined in posix_send.h */
+    MPIDI_POSIX_SEND_VSIS(vci_src, vci_dst);
+
     bool done = false;
     mpi_errno = MPIDI_IPCI_try_lmt_isend(buf, count, datatype, rank, tag, comm,
-                                         attr, addr, request, &done);
+                                         attr, addr, vci_src, vci_dst, request, &done);
     MPIR_ERR_CHECK(mpi_errno);
 
     if (!done) {
-        mpi_errno = MPIDI_POSIX_mpi_isend(buf, count, datatype, rank, tag, comm,
-                                          attr, addr, request);
+        mpi_errno = MPIDI_POSIX_mpi_isend_vci(buf, count, datatype, rank, tag, comm,
+                                              attr, addr, vci_src, vci_dst, request);
         MPIR_ERR_CHECK(mpi_errno);
     }
 

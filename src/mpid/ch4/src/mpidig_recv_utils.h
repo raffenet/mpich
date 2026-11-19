@@ -220,12 +220,23 @@ MPL_STATIC_INLINE_PREFIX void MPIDIG_recv_copy(void *in_data, MPIR_Request * rre
         /* otherwise if recv size = 0, it is at least a truncation error */
         MPIR_STATUS_SET_COUNT(rreq->status, 0);
     } else if (p->recv_type == MPIDIG_RECV_DATATYPE) {
+        MPI_Datatype datatype = MPIDIG_REQUEST(rreq, datatype);
+        void *buf = MPIDIG_REQUEST(rreq, buffer);
+        MPI_Aint count = MPIDIG_REQUEST(rreq, count);
         MPI_Aint actual_unpack_bytes;
-        MPIR_Typerep_unpack(in_data, in_data_sz,
-                            MPIDIG_REQUEST(rreq, buffer),
-                            MPIDIG_REQUEST(rreq, count),
-                            MPIDIG_REQUEST(rreq, datatype),
-                            0, &actual_unpack_bytes, MPIR_TYPEREP_FLAG_NONE);
+        if (HANDLE_IS_BUILTIN(datatype) && !p->is_device_buffer &&
+            !MPIR_GPU_query_pointer_is_dev(in_data)) {
+            MPI_Aint elem_sz = MPIR_Datatype_get_basic_size(datatype);
+            MPI_Aint total_sz = count * elem_sz;
+            actual_unpack_bytes = MPL_MIN(total_sz, in_data_sz);
+            if (unlikely(actual_unpack_bytes != total_sz && elem_sz > 1)) {
+                actual_unpack_bytes -= actual_unpack_bytes % elem_sz;
+            }
+            MPIR_Memcpy(buf, in_data, actual_unpack_bytes);
+        } else {
+            MPIR_Typerep_unpack(in_data, in_data_sz, buf, count, datatype,
+                                0, &actual_unpack_bytes, MPIR_TYPEREP_FLAG_NONE);
+        }
         if (!rreq->status.MPI_ERROR && in_data_sz > actual_unpack_bytes) {
             /* Truncation error has been checked at MPIDIG_recv_type_init.
              * If the receive buffer had enough space, but we still

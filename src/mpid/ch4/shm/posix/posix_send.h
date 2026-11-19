@@ -25,19 +25,18 @@
         } \
     } while (0)
 
-MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_isend(const void *buf, MPI_Aint count,
-                                                   MPI_Datatype datatype, int rank, int tag,
-                                                   MPIR_Comm * comm, int attr,
-                                                   MPIDI_av_entry_t * addr, MPIR_Request ** request)
+MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_isend_vci(const void *buf, MPI_Aint count,
+                                                       MPI_Datatype datatype, int rank, int tag,
+                                                       MPIR_Comm * comm, int attr,
+                                                       MPIDI_av_entry_t * addr,
+                                                       int vci_src, int vci_dst,
+                                                       MPIR_Request ** request)
 {
     int mpi_errno = MPI_SUCCESS;
 
     int context_offset = MPIR_PT2PT_ATTR_CONTEXT_OFFSET(attr);
     int coll_attr = MPIR_PT2PT_ATTR_GET_ERRFLAG(attr);
     bool syncflag = MPIR_PT2PT_ATTR_GET_SYNCFLAG(attr);
-
-    int vci_src, vci_dst;
-    MPIDI_POSIX_SEND_VSIS(vci_src, vci_dst);
 
     MPIDI_POSIX_THREAD_CS_ENTER_VCI(vci_src);
     bool done = false;
@@ -81,6 +80,17 @@ MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_isend(const void *buf, MPI_Aint cou
     MPIDI_POSIX_THREAD_CS_EXIT_VCI(vci_src);
 
     return mpi_errno;
+}
+
+MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_isend(const void *buf, MPI_Aint count,
+                                                   MPI_Datatype datatype, int rank, int tag,
+                                                   MPIR_Comm * comm, int attr,
+                                                   MPIDI_av_entry_t * addr, MPIR_Request ** request)
+{
+    int vci_src, vci_dst;
+    MPIDI_POSIX_SEND_VSIS(vci_src, vci_dst);
+    return MPIDI_POSIX_mpi_isend_vci(buf, count, datatype, rank, tag, comm, attr, addr,
+                                     vci_src, vci_dst, request);
 }
 
 MPL_STATIC_INLINE_PREFIX int MPIDI_POSIX_mpi_cancel_send(MPIR_Request * sreq)
