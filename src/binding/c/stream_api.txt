@@ -62,7 +62,7 @@ MPIX_Stream_send:
     mpi_errno = MPID_Send(buf, count, datatype, dest, tag, comm_ptr, attr, &request_ptr);
     MPIR_ERR_CHECK(mpi_errno);
 
-    if (request_ptr == NULL) {
+    if (request_ptr == NULL || HANDLE_IS_BUILTIN(request_ptr->handle)) {
         goto fn_exit;
     }
 
